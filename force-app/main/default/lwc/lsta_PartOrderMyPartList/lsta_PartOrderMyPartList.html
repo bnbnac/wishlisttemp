@@ -1,0 +1,165 @@
+<!--  
+* ============================================================ 
+* File Name   : lsta_PartOrderMyPartList.html  
+* Description : wishlist container
+* Author      : Evander
+* Modification Log  
+* ============================================================ 
+* Ver  Date          Author         Modification   
+* ============================================================  
+* 1.0  2025-09-18    Evander        Created 
+* ============================================================  
+* TODO
+--> 
+<template>
+    <div class="c-container">
+        <div class="header">
+            <div class="title slds-grid">
+                <div>
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <lightning-icon icon-name="standard:budget" size="medium"></lightning-icon>
+                        <div>
+                            <div class="slds-grid slds-form-element__label">Wishlist</div>
+                            <div class="slds-grid title-right">
+                                <h3>My wish list01</h3>
+                                <lightning-button-menu alternative-text="Wishlist List" variant="bare" class="wishlist-list">
+                                    <lightning-menu-item value="MenuItemOne" label="Menu Item One"></lightning-menu-item>
+                                    <lightning-menu-item value="MenuItemTwo" label="Menu Item Two"></lightning-menu-item>
+                                    <lightning-menu-item value="MenuItemThree" label="Menu Item Three"></lightning-menu-item>
+                                    <lightning-menu-item value="MenuItemFour" label="Menu Item Four"></lightning-menu-item>
+                                </lightning-button-menu>
+                            </div>
+                        </div>
+                        <lightning-button-menu alternative-text="Menu" onselect={handleMenuSelect}>
+                            <lightning-menu-item value="create" label="Create List" icon-name="utility:add"></lightning-menu-item>
+                            <lightning-menu-item value="clear" label="Clear List" icon-name="utility:clear"></lightning-menu-item>
+                            <lightning-menu-item value="delete" label="Delete List" icon-name="utility:delete"></lightning-menu-item>
+                            <lightning-menu-item value="edit" label="Edit List" icon-name="utility:edit"></lightning-menu-item>
+                        </lightning-button-menu>
+                    </div>
+                    <p class="slds-page-header__name-meta" style="margin-top:10px">
+                        <span class="slds-badge slds-badge_lightest" style="padding-left:10px;padding-right:10px">
+                            6
+                        </span>
+                        &nbsp; parts are registered.
+                    </p>
+                </div>
+                
+                <div class="button-wrap slds-grid">
+                    <lightning-button
+                        label="Add Part"
+                        variant="brand-outline"
+                        icon-name="utility:add"
+                        icon-position="right"
+                        onclick={handleClickAddPart}>
+                    </lightning-button>
+
+                    <lightning-button
+                        label="Delete Part"
+                        variant="brand-outline"
+                        icon-name="utility:delete"
+                        icon-position="right"
+                        onclick={handleClickDeletePart}>
+                    </lightning-button>
+
+                    <lightning-button
+                        label="Upload (csv)"
+                        variant="brand-outline"
+                        icon-name="utility:upload"
+                        icon-position="right"
+                        onclick={handleClickUploadCsv}>
+                    </lightning-button>
+
+                    <lightning-button
+                        label="Form (csv)"
+                        variant="brand-outline"
+                        icon-name="utility:download"
+                        icon-position="right"
+                        onclick={handleClickDownloadCsvForm}>
+                    </lightning-button>
+
+                    <lightning-button
+                        label="Add to Wishlist"
+                        variant="brand-outline"
+                        icon-name="utility:copy"
+                        icon-position="right"
+                        onclick={handleClickAddToWishlist}>
+                    </lightning-button>
+
+                    <lightning-button
+                        label="Print"
+                        variant="brand-outline"
+                        icon-name="utility:print"
+                        icon-position="right"
+                        onclick={handleClickPrint}>
+                    </lightning-button>
+
+                    <lightning-button
+                        label="Add to Cart"
+                        variant="brand"
+                        icon-name="utility:fulfillment_order"
+                        icon-position="right"
+                        onclick={handleClickAddToCart}>
+                    </lightning-button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Upload 버튼 클릭시 -->
+        <template if:true={showUploadSection}>
+            <div class="upload-csv">
+                <p>
+                    <lightning-icon icon-name="utility:info" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                    Please download the template for the upload form. Only CSV files are available
+                </p>
+                <lightning-file-upload
+                    label=""
+                    name="fileUploader"
+                    accept="[.csv]"
+                    class="custom-file-upload"
+                >
+                </lightning-file-upload>
+            </div>
+        </template>
+
+        <lightning-datatable
+            class="c-list-container"
+            key-field="id"
+            data={orderItems}
+            columns={columns}
+            max-row-selection="100"
+            selected-rows={selectedOrderRowKeys}
+            onrowselection={handleOrderRowSelection}
+            onrowaction={handleRowAction}>
+        </lightning-datatable>
+
+        <!-- 데이터 없을시 -->
+        <template if:true={displayNoData}>
+            <div class="empty-wrap">
+                <div class="empty-icon">
+                    <lightning-icon icon-name="utility:picklist_type" variant="inverse"></lightning-icon>
+                </div>
+                <p>Your wishlist is empty!</p>
+            </div>
+        </template>
+
+        <!-- 모달 -->
+        <template if:true={showCreateListModal}>
+            <c-lsta_-part-order-my-part-list-list-modal
+            ></c-lsta_-part-order-my-part-list-list-modal>
+        </template>
+        <template if:true={showEditListModal}>
+            <c-lsta_-part-order-my-part-list-list-modal
+            ></c-lsta_-part-order-my-part-list-list-modal>
+        </template>
+        <template if:true={showAddPartModal}>
+            <c-lsta_-part-order-my-part-list-add-part-modal
+            ></c-lsta_-part-order-my-part-list-add-part-modal>
+        </template>
+        <template if:true={showAddToWishlistModal}>
+            <c-lsta_-part-order-my-part-list-add-to-list-modal
+            ></c-lsta_-part-order-my-part-list-add-to-list-modal>
+        </template>
+    </div>
+</template>

@@ -21,8 +21,9 @@
     0.5     2023.11.22  K(xanitus)  단가 추가
     0.6     2023.11.23  K(xanitus)  getWishlistItems 제거
                                     getMyPartList 동적 쿼리로 변경
+    0.7     2025.09.19  Evander     초기 찜 목록 이름 라벨링
  ****************************************************************************************/
-public without sharing class PartsOrderMyPartListWorkerController {
+public without sharing class LSTA_PartsOrderMyPartListController {
     @AuraEnabled
     public static PartsOrderResponseWrapper searchParts(Map<String, Object> mapData) {
         mapData.put('addPartByPopup','yes');
@@ -46,7 +47,10 @@ public without sharing class PartsOrderMyPartListWorkerController {
                 String webStoreId = PartsOrderCommonController.getWebStoreIds();
 
                 List<Wishlist> newWishlists = new List<Wishlist>();
-                List<String> initNames = new List<String>{'자주하는 주문', '필터류'};
+                List<String> initNames = new List<String>{
+                    System.Label.Frequent_Orders,
+                    System.Label.Filters
+                };
                 for (String initMyListName : initNames) {
                     Wishlist newWishlist = new Wishlist(
                         Name = initMyListName,

@@ -1,0 +1,457 @@
+
+<aura:component          
+        description = "Parts Order Cart" 
+        implements = "force:appHostable,flexipage:availableForAllPageTypes,forceCommunity:availableForAllPageTypes"
+        controller = "PartsOrderMyPartListWorkerController">
+    <ltng:require scripts = "{!$Resource.jQuery}" afterScriptsLoaded = "{!c.onLoadJQuery}" />
+    <aura:html tag = "style">
+    </aura:html>
+    <aura:handler   name = "render"     value = "{!this}" action ="{!c.onRender}" />
+    <aura:handler   name = "init"       value = "{!this}" action ="{!c.doInit}" />
+
+    <aura:handler   name="partNumberEvent" event="c:partNumberEvent" action="{!c.onHandlePartNumberEvent}"/>
+
+    <aura:attribute name = "partsList"                      type = "List"       default = "[]"      />  
+    <aura:attribute name = "targetList"                     type = "List"       default = "[]"      />  
+    <aura:attribute name = "myPartsListColumns"             type = "List"       default = "[]"      />   
+    <aura:attribute name = "partsToAddToMyPartsListColumns" type = "List"       default = "[]"      />   
+    <aura:attribute name = "myPartsList"                    type = "List"       default = "[]"      />  
+    <aura:attribute name = "myPartsListItem"                type = "Object"     default = "{}"      />  
+    <aura:attribute name = "isDone"                         type = "boolean"    default = "true"    />
+    <aura:attribute name = "isDoneSearch"                   type = "boolean"    default = "false"   />
+    <aura:attribute name = "isNewPartList"                  type = "boolean"    default = 'false'   />
+    <aura:attribute name = "isEditMyPartListName"           type = "boolean"    default = 'false'   />
+    <aura:attribute name = "isAddPartsInPartList"           type = "boolean"    default = "false"   />
+    <aura:attribute name = "myPartsListId"                  type = "String"     default = ""        />  
+    <aura:attribute name = "selectedBuffer"                 type = "List"       default = "[]"      />
+    <aura:attribute name = "selectedBufferTarget"           type = "List"       default = "[]"      />
+    <aura:attribute name = "selectedBufferByAdd"            type = "List"       default = "[]"      />
+    <aura:attribute name = "isUploadMyPartListFile"         type = "boolean"    default = "false"   />
+    <aura:attribute name = "isCloneMyParts"                 type = "boolean"    default = "false"   />
+    <aura:attribute name = "partsCloneTableColums"          type = "List"       default = "[]"      />   
+    <aura:attribute name = "isTypeClone"                    type = "boolean"    default = "true"    />   
+    <aura:attribute name = "draftValues"                    type = "List"       default = "[]"      />   
+    <aura:attribute name = "draftValueMap"                  type = "Map"        default = "{}"      />
+    <aura:attribute name = "isShowCompSet"                  type = "boolean"    default = "false"   />
+    <aura:attribute name = "checkPartNumber"                type = "Object"     default = "{}"      />
+    <aura:attribute name = "checkQuantity"                  type = "Decimal"    default = "0"       />
+    <aura:attribute name = "selectedLeftModalBuffer"        type = "List"       default = "[]"      />
+    <aura:attribute name = "partsToCart"                    type = "List"       default = "[]"      />
+    <aura:attribute name = "isDistributor"                  type = "boolean"    default = "false"   />
+    <aura:attribute name = "isSelectObjCode"                type = "boolean"    default = "false"   />
+    <aura:attribute name = "orderTypeOptions"               type = "List"       default = "[{'label': '일반주문', 'value': 'Default Delivery'},{'label': '정기주문', 'value': 'StandingOrder Delivery'},{'label': '직송주문', 'value': 'DirectOrder Delivery'},{'label': '직납주문', 'value': 'DirectPaymentOrder Delivery'}]"/>
+    <aura:attribute name = "selectedOrderType"              type = "String"     default = "Default Delivery"   />
+    
+    <aura:import library = "lightning:confirm"              property = "LightningConfirm"           />
+    <!-- DESC : Lightning Message Service (LMS) -->
+    <lightning:messageChannel type = "lightning__commerce_cartChanged" aura:id="cartChanged" />
+    <!-- 사이트 주소 가져오기 -->
+    <aura:attribute name="sitePrefix" type="String" />
+    <c:sitePrefixWrapper onprefixloaded="{!c.handlePrefixLoaded}" />
+    <aura:handler event="force:refreshView" action = "{!c.doInit}" />
+    <div>
+        <!-- DESC : Page Header -->
+        <!-- TODO : 공통모듈로 변경해야 한다 -->
+        <aura:renderIf isTrue = "{!v.isDone == true}">
+            <div class="slds-page-header">
+                <div class="slds-page-header__row">
+                    <div class="slds-page-header__col-title">
+                        <div class="slds-media">
+                            <div class="slds-media__figure">
+                                <span class="slds-icon_container slds-icon-standard-opportunity">
+                                    <lightning:icon iconName = "standard:budget" alternativeText="찜 목록" title = "찜 목록" />
+                                </span>
+                            </div>
+                            <div class="slds-media__body">
+                                <div class="slds-page-header__name">
+                                    <div class="slds-page-header__name-title">
+                                        <h1>
+                                        <span>찜 목록</span>
+                                        <span class="slds-page-header__title slds-truncate" title = "Recently Viewed">{!v.myPartsListItem.Name}</span>
+                                        </h1>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slds-page-header__col-actions">
+                        <div class="slds-page-header__controls">
+                            <div class="slds-page-header__control">
+                                <ul class="slds-button-group-list">
+                                    <li class="cstm__search_drop">     
+                                        <aura:renderIf isTrue = "{!v.myPartsList.length == 0}">
+                                            <lightning:buttonMenu alternativeText = "찜 목록" iconName = "utility:list" class = "slds-button_neutral" variant = "border-filled"  label = '' disabled="true"/>
+                                            <aura:set attribute = "else">
+                                                <lightning:buttonMenu alternativeText = "찜 목록" iconName = "utility:list" class = "slds-button_neutral" 
+                                                    variant = "border-filled"  label = '찜 목록' onselect = "{!c.onSelectMyPartList }">
+                                                    <aura:iteration items = "{!v.myPartsList}" var = "item">
+                                                        <lightning:menuItem value = "{!'id:' + item.Id}" label = "{!item.Name}" />
+                                                    </aura:iteration>
+                                                </lightning:buttonMenu>        
+                                            </aura:set>
+                                        </aura:renderIf>                                   
+                                    </li>
+                                    <li> 
+                                        <div class="slds-dropdown-trigger slds-dropdown-trigger_click cstm__row02">                                
+                                            <lightning:button label = "목록 생성"        iconName = "utility:add"    iconPosition = "left"  onclick = "{!c.onClickNewMyPartList}"       />                                            
+                                            <lightning:button label = "목록 비우기"      iconName = "utility:clear"  iconPosition = "left"  onclick = "{!c.clickClearListOnMyPartList}" />
+                                            <lightning:button label = "목록 삭제"        iconName = "utility:cut"    iconPosition = "left"  onclick = "{!c.clickDeleteListOnMyPartList}"/>
+                                            <span data-id = '{!v.myPartsListItem.Id}' onclick = "{!c.onClicEditMyPartListName}">
+                                                <lightning:button label = "목록 수정" iconName = "utility:edit" iconPosition = "left" />
+                                            </span>
+                                        </div>                               
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-page-header__row">
+                    <div class="slds-page-header__col-meta">
+                        <p class="slds-page-header__meta-text">
+                            {!v.myPartsListItem.Description__c}
+                        </p>
+                        <p class="slds-page-header__meta-text">
+                            <span class = "slds-badge slds-badge_lightest" style = 'padding-left:10px;padding-right:10px;margin-bottom:0px'>
+                                {! v.myPartsListItem.WishlistProductCount }
+                            </span>
+                            <aura:renderIf isTrue="{!v.isDistributor}">
+                                건의 부품이 등록되어 있습니다. 아래 단가 및 청구 금액은 부가세를 제외한 금액입니다.
+                                <aura:set attribute="else">
+                                    건의 부품이 등록되어 있습니다. 아래 단가 및 청구 금액은 부가세를 포함한 금액입니다.
+                                </aura:set>
+                            </aura:renderIf>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        <aura:set attribute = "else">
+            <lightning:spinner variant="brand" size = "large"/>
+        </aura:set>
+        </aura:renderIf>
+        <div class = "contentFrameInner">
+            <aura:renderIf isTrue = "{!v.myPartsList.length == 0}">
+                <div class="slds-box ">
+                    목록이 없습니다
+                    <div style = "margin: 10px 0px 10px 0px;">
+                        목록을 먼저 추가헤 주세요                        
+                    </div>
+                </div>            
+                <aura:set attribute = "else">
+                    <div class = "slds-no-print" style = 'margin-bottom:10px'>                                    
+                        <div class="buttonBackground cstm__row02_btn_wrap"> 
+                            <lightning:button label = "부품 추가"               iconName = "utility:add"        iconPosition = "right"  variant="inverse" onclick = "{!c.onClickAddOnMyPartsList}"              />
+                            <lightning:button label = "부품 삭제"               iconName = "utility:delete"     iconPosition = "right"  variant="inverse" onclick = "{!c.onClickDeleteOnMyPartsList}"           />                            
+                            <lightning:button label = "업로드 (csv)"            iconName = "utility:upload"     iconPosition = "right"  variant="inverse" onclick = "{!c.onClickUploadButtonOnMyPartList}"      />
+                            <lightning:button label = "양식 (csv)"              iconName = "utility:download"   iconPosition = "right"  variant="inverse" onclick = "{!c.onClickDownloadButtonOnMyPartList}"    />
+                            <lightning:button label = "찜 목록으로 추가"         iconName = "utility:copy"       iconPosition = "right"  variant="inverse" onclick = "{!c.onClickCloneOnMyPartsList}"            />
+                            <lightning:button label = "장바구니에 추가"          iconName = "utility:copy"       iconPosition = "right"  variant="inverse" onclick = "{!c.onclickCloneToCart}"                   />
+                            <lightning:button label = "출력"                    iconName = "utility:print"      iconPosition = "right"  variant="inverse" onclick = "{!c.onClickPrintOnMyPartList}"             />
+                        </div>
+                    </div>
+                    <!-- DESC : 내 부품 목록 업로드 -->
+                    <aura:renderIf isTrue = "{!v.isUploadMyPartListFile == true}">
+                        <div style = 'line-height: 25px; text-align:center; margin-bottom: -15px;'>
+                            <lightning:icon iconName = "utility:info" alternativeText = "" title = "" size = 'xx-small'/>                    
+                            업로드 양식은 템플릿을 다운로드하여 확인하세요. CSV 파일만 가능합니다
+                        </div>
+                        <lightning:fileUpload 
+                            name = "fileUploader" 
+                            multiple = "false" 
+                            accept = "['.csv']"
+                            onuploadfinished = "{!c.onDoneMyPartFileUpload}" 
+                            class = "file-selector-image"
+                        />
+                    </aura:renderIf>
+                    <!-- DESC : 내 부품 목록 테이블 -->
+                    <div class = 'dataTableWrapper printTarget' id = 'printSectionMyParts'>
+                        <lightning:datatable 
+                            data = "{!v.myPartsListItem.WishlistItems}"  
+                            columns = "{!v.myPartsListColumns}" 
+                            class = "slds-table_striped"
+                            keyField = "Id" 
+                            onrowselection = "{!c.onSelectTableRows}"
+                            onsave = "{!c.onSaveTableRows}"     
+                            draftValues = "{!v.draftValues}"
+                        />
+                    </div>
+                </aura:set>
+            </aura:renderIf>
+        </div>
+        <!-- DESC : 부품 목록 추가 팝업 -->
+        <aura:renderIf isTrue = "{!v.isNewPartList == true}">
+            <div class = 'setProductModal'>
+                <section role = "dialog" tabindex="-1" aria-modal = "true" aria-labelledby = "modal-heading-01" class = "slds-modal slds-fade-in-open">
+                    <div class = "slds-modal__container">
+                    <button class = "slds-button slds-button_icon slds-modal__close slds-button_icon-inverse">
+                        <lightning:icon iconName = "utility:close" alternativeText = "button_icon" title = "button_icon" size = 'xx-small'  onclick = "{!c.onClickNewMyPartList}"/>
+                        <span class = "slds-assistive-text">Cancel and close</span>
+                    </button>
+                    <div class="slds-modal__header">
+                        <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">찜 목록 생성</h1>
+                    </div>
+                    <div class = "slds-modal__content slds-p-around_medium" id = "modal-content-id-1">
+                        <div class = "slds-form-element">                                        
+                            <abbr class = "slds-required" title = "required">* </abbr>
+                            <label class = "slds-form-element__label" for = "text-input-id-47">찜 목록 이름을 입력하세요</label>
+                            <div class = "slds-form-element__control">
+                                <ui:inputText value = ""                                             
+                                aura:id = "textMyPartsListName" 
+                                placeholder = "My Parts List Name" required = "" class = "slds-input" />
+                            </div>
+                        </div>
+                        <div class = "slds-form-element">
+                            <label class = "slds-form-element__label" for = "textarea-id-01">이 목록에 대한 설명을 입력하세요</label>
+                            <div class = "slds-form-element__control">
+                                <ui:inputTextArea aura:id = 'textMyPartsLisDescription' placeholder = "My Parts List Description" class = "slds-textarea"></ui:inputTextArea >
+                            </div>
+                        </div>
+                        <div style = 'margin-top:15px;text-align:right'>
+                            <button class = "slds-button slds-button_neutral" aria-label = "Cancel and close" onclick = "{!c.onClickNewMyPartList}">취소</button>
+                            <button class = "slds-button slds-button_brand" onclick = "{!c.onClickSaveOnMyPartsListModal}">저장</button>
+                        </div>                        
+                    </div>
+                    </div>
+                </section>
+                <div class = "slds-backdrop slds-backdrop_open" role = "presentation"></div>
+            </div>
+        </aura:renderIf>
+        <!-- DESC : 나의 찜 목록 이름 변경 팝업 -->
+        <aura:renderIf isTrue = "{!v.isEditMyPartListName == true}">
+            <section role = "dialog" tabindex="-1" aria-modal = "true" aria-labelledby = "modal-heading-01" class = "slds-modal slds-fade-in-open">
+                <div class = "slds-modal__container">
+                <button class = "slds-button slds-button_icon slds-modal__close slds-button_icon-inverse">
+                    <lightning:icon iconName = "utility:close" alternativeText = "button_icon" title = "button_icon" size = 'xx-small' 
+                        onclick = "{!c.closeBundleProductModal}"/>
+                    <span class = "slds-assistive-text">Cancel and close</span>
+                </button>
+                <div class = "slds-modal__content slds-p-around_medium" id = "modal-content-id-1">
+                    <h1 id = "modal-heading-01" class = "slds-modal__title slds-hyphenate">찜 목록 이름 변경</h1>
+                    <div class = "slds-form-element" style = 'margin-top:20px'>                                        
+                        <abbr class = "slds-required" title = "required">* </abbr>
+                        <label class = "slds-form-element__label" for = "text-input-id-47">찜 목록 이름을 입력하세요</label>
+                        <div class = "slds-form-element__control">
+                            <ui:inputText value = "{!v.myPartsListItem.Name}" aura:id = "textEditedMyPartsListName"  placeholder = "My Parts List Name" required = "" class = "slds-input" />
+                        </div>
+                        <div class = "slds-form-element">
+                            <label class = "slds-form-element__label" for = "textarea-id-01">설명</label>
+                            <div class = "slds-form-element__control">
+                                <ui:inputTextArea aura:id = 'textMEdtiedyPartsLisDescription' placeholder = "My Parts List Description" class = "slds-textarea" value = "{!v.myPartsListItem.Description__c}">                                   
+                                </ui:inputTextArea >
+                            </div>
+                        </div>
+                    </div>
+                    <div style = 'margin-top:15px;text-align:right'>
+                        <button class = "slds-button slds-button_neutral" aria-label = "Cancel and close" onclick = "{!c.onClicEditMyPartListName}">취소</button>
+                        <button class = "slds-button slds-button_brand" onclick = "{!c.onClickSaveOnEditMyPartListName}">저장</button>
+                    </div>
+                </div>
+                </div>
+            </section>
+            <div class = "slds-backdrop slds-backdrop_open" role = "presentation"></div>
+        </aura:renderIf>
+        <!-- DESC : 부품 추가 팝업 -->
+        <aura:renderIf isTrue = "{!v.isAddPartsInPartList == true}">
+            <div class = 'setProductModal'>
+                <section role = "dialog" tabindex="-1" aria-modal = "true" aria-labelledby = "modal-heading-01" class = "slds-modal slds-fade-in-open">
+                    <div class = "slds-modal__container" style="min-width: calc(50vw);">
+                    <button class = "slds-button slds-button_icon slds-modal__close slds-button_icon-inverse">
+                        <lightning:icon iconName = "utility:close" alternativeText = "button_icon" title = "button_icon" size = 'xx-small' onclick = "{!c.onClickAddOnMyPartsList}"/>
+                        <span class = "slds-assistive-text">Cancel and close</span>
+                    </button>
+                    <div class = "slds-modal__content slds-p-around_medium" id = "modal-content-id-1">
+                        <c:PartOrderModalTitle title = '찜 목록에 부품 추가' description = "부품 검색 후, 대상 부품을 선택 후, 목록에 추가하세요"/>
+                        <!-- DESC : 검색 입력 -->
+                        <span onkeypress="{!c.onKeyUpSearchOnAddPartModalInCart}">
+                            <div class = "slds-grid slds-wrap searchBox" style = 'margin: 10px 0px 10px 0px;'>
+                                <div class = "slds-col slds-size_3-of-12 ">
+                                    <lightning:input aura:id = "textAddedMyPartsNo" name = "enter-search" label = "자재번호" type = "search" placeholder = '' value = ""/>
+                                </div>
+                                <div class = "slds-col slds-size_3-of-12">
+                                    <lightning:input aura:id = "textAddedMyPartsNoPrev" name = "enter-search" label = "기존자재번호" type = "search" placeholder = '' value = ""/>
+                                </div>
+                                <div class = "slds-col slds-size_4-of-12">
+                                    <lightning:input aura:id = "textAddedMyPartsName" name = "enter-search" label = "자재내역" type = "search" placeholder = '' value = ""/>
+                                </div>
+                                <div class = "slds-col slds-size_2-of-12" style = 'text-align: right'>
+                                    <!-- slds-button_stretch -->
+                                    <button class = "slds-button slds-button_outline-brand " onclick = "{!c.onClickSearchOnAddPartModalInPartList}" style = 'margin-top: 22px;'>
+                                        <lightning:icon iconName = "utility:search" alternativeText = "button_icon" title = "button_icon" size = 'xx-small' />&nbsp;
+                                        검색
+                                    </button>
+                                </div>
+                            </div>
+                        </span>
+                        <!-- DESC : 검색 결과 테이블 -->
+                        <div class = 'dataTableWrapper' style = 'height: 200px; overflow:auto'>
+                            <aura:renderIf isTrue = "{!v.isDone == false}">
+                                <lightning:spinner alternativeText = "Loading"/>
+                                <aura:set attribute = "else">
+                                    <aura:renderIf isTrue = "{! AND(v.partsList.length == 0, v.isDoneSearch == true)}">
+                                        <div style="text-align: center;margin-top: 10px;">
+                                            검색 결과가 없습니다.
+                                        </div>
+                                        <aura:set attribute = "else">
+                                            <div style = 'overflow:auto'>
+                                                <table class = "slds-table slds-table_cell-buffer slds-table_bordered" aria-labelledby = "element-with-table-label other-element-with-table-label">
+                                                    <thead>
+                                                        <tr class = "slds-line-height_reset">
+                                                            <th class = "" scope = "col"></th>
+                                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">자재번호</div></th>
+                                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">기존자재번호</div></th>
+                                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">자재내역</div></th>
+                                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">모델명</div></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <aura:iteration items = "{!v.partsList}" var = "item" indexVar = "index">
+                                                            <tr class = "slds-hint-parent">
+                                                                <td>
+                                                                    <lightning:input type = "checkbox" checked="{!item.isSelected}" value = "{!item}" 
+                                                                    aura:id="rowCheckboxByAdd" onchange = "{!c.onSelectTableRowByAdd}"/>
+                                                                </td>
+                                                                <td data-label = "" style="text-align: left;">{!item.Partnum__c}</td>
+                                                                <td data-label = "">{!item.OldPartnum__c}</td>
+                                                                <td data-label = "">{!item.NameKor__c}</td>
+                                                                <td data-label = "">{!item.Product__r.fm_Model_Names__c}</td>
+                                                            </tr>
+                                                        </aura:iteration>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </aura:set>
+                                    </aura:renderIf>
+                                </aura:set>
+                            </aura:renderIf>
+                        </div>
+                        <aura:renderIf isTrue = "{!v.selectedBufferByAdd.length > 0}">
+                            <div style="border-width: 2px 0px 0px 0px;border-style: solid;padding-top: 20px;">
+                                <h2>선택 부품</h2>
+                            </div>
+                            <div class = 'dataTableWrapper' style = 'height: 150px; overflow:auto;'>
+                                <table class = "slds-table slds-table_cell-buffer slds-table_bordered" aria-labelledby = "element-with-table-label other-element-with-table-label">
+                                    <thead>
+                                        <tr class = "slds-line-height_reset">
+                                            <th class = "" scope = "col"></th>
+                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">자재번호</div></th>
+                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">기존자재번호</div></th>
+                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">자재내역</div></th>
+                                            <th class = "" scope = "col"><div class = "slds-truncate" title = "" style="text-align: left;">수량</div></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <aura:iteration items = "{!v.selectedBufferByAdd}" var = "item" indexVar = "index">
+                                            <tr class = "slds-hint-parent">
+                                                <td>
+                                                    <lightning:input type = "checkbox" checked="{!item.isSelected}" value = "{!item}" 
+                                                    aura:id="rowCheckboxByAdd" onchange = "{!c.onSelectTableRowByAdd}"/>
+                                                </td>
+                                                <td data-label = "" style="text-align: left;">{!item.Partnum__c}</td>
+                                                <td data-label = "">{!item.OldPartnum__c}</td>
+                                                <td data-label = "">{!item.NameKor__c}</td>
+                                                <td data-label = "">
+                                                    <lightning:input style="width: 75px;" label = "" type = "text" variant="label-hidden" 
+                                                        value = "{!item.Quantity__c}"/>
+                                                </td>
+                                            </tr>
+                                        </aura:iteration>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </aura:renderIf>
+                        <div style = 'margin-top:15px;text-align:right'>
+                            <button class = "slds-button slds-button_neutral" aria-label = "Cancel and close" onclick = "{!c.onClickAddOnMyPartsList}">취소</button>
+                            <aura:renderIf isTrue = "{!v.isDone == false}">
+                                <button class = "slds-button slds-button_brand" onclick = "{!c.onClickSaveOnAddPartModalInPartList}" disabled="true">Saving</button>
+                                <aura:set attribute = "else">
+                                    <button class = "slds-button slds-button_brand" onclick = "{!c.onClickSaveOnAddPartModalInPartList}">저장</button>
+                                </aura:set>
+                            </aura:renderIf>
+                        </div>
+                    </div>
+                    </div>
+                </section>
+                <div class = "slds-backdrop slds-backdrop_open" role = "presentation"></div>
+            </div>
+        </aura:renderIf>
+        <!-- DESC : 이동 또는 복제 팝업 -->
+        <aura:renderIf isTrue = "{!v.isCloneMyParts == true}">
+            <div class = ''>
+                <section role = "dialog" tabindex="-1" aria-modal = "true" aria-labelledby = "modal-heading-01" class = "slds-modal slds-fade-in-open">
+                    <div class = "slds-modal__container">
+                    <button class = "slds-button slds-button_icon slds-modal__close slds-button_icon-inverse">
+                        <lightning:icon iconName = "utility:close" alternativeText = "button_icon" title = "button_icon" size = 'xx-small' 
+                            onclick = "{!c.clickCliseOnMyPartsList}"/>
+                        <span class = "slds-assistive-text">Cancel and close</span>
+                    </button>
+                    <div class = "slds-modal__content slds-p-around_medium" id = "modal-content-id-1">
+                        <!-- DESC : 작업 구분에 따른 안내 문구 출력 -->
+                        <aura:renderIf isTrue = "{!v.isTypeClone == true}">
+                            <c:PartOrderModalTitle title = '주문을 찜 목록으로 복제' description = "대상 부품을 선택 후, 찜 목록에 추가하세요"/>
+                            <!-- DESC :  기능이 삭제되어 아래 부분은 작동 되지 않는다 -->
+                            <aura:set attribute = "else">
+                                <h1 id = "modal-heading-01" class = "slds-modal__title slds-hyphenate">찜 목록 이동</h1>
+                                <h2 id = "modal-heading-02" class = "margin-top-10 ">선택한 항목을 이동할 목록을 선택하세요</h2>
+                                <h2 id = "modal-heading-02" class = "margin-bottom-10">선택된 항목은 이동후 삭제됩니다</h2>
+                            </aura:set>
+                        </aura:renderIf> 
+                        <div class = 'dataTableWrapper'>
+                            <lightning:datatable data = "{!v.targetList}" 
+                                columns = "{!v.partsCloneTableColums}" 
+                                keyField = "name"
+                                onrowselection = "{!c.onSelectTableRowsTarget}"/>
+                        </div>
+                        <div style = 'margin-top:15px;text-align:right'>
+                            <button class = "slds-button slds-button_neutral" aria-label = "Cancel and close" onclick = "{!c.clickCliseOnMyPartsList}">취소</button>
+                            <aura:renderIf isTrue = "{!v.isDone == false}">
+                                <button class = "slds-button slds-button_brand" onclick = "{!c.clickSaveOnMyPartsCloneModal}" disabled="true">Saving</button>
+                                <aura:set attribute = "else">
+                                    <button class = "slds-button slds-button_brand" onclick = "{!c.clickSaveOnMyPartsCloneModal}">저장</button>
+                                </aura:set>
+                            </aura:renderIf>
+                        </div>
+                    </div>
+                    </div>
+                </section>
+                <div class = "slds-backdrop slds-backdrop_open" role = "presentation"></div>
+            </div>
+        </aura:renderIf>
+        <!-- DESC : 청구 목적 선택 팝업 -->
+        <aura:renderIf isTrue="{!v.isSelectObjCode == true}">
+            <div class="">
+                <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading-01" class="slds-modal slds-fade-in-open">
+                    <div class="slds-modal__container">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse">
+                            <lightning:icon iconName="utility:close" alternativeText="button_icon" title="button_icon" size="xx-small" onclick="{!c.onclickCancelSelectObjCode}" />
+                            <span class="slds-assistive-text">Cancel and close</span>
+                        </button>
+                        <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                            <!-- DESC : 작업 구분에 따른 안내 문구 출력 -->
+                            <p>주문 종류를 선택하세요:</p>
+                            <lightning:combobox name="orderType" label="주문 종류" value="{!v.selectedOrderType}" placeholder="주문 종류를 선택하세요" options="{!v.orderTypeOptions}" onchange="{!c.handleOrderTypeChange}">
+                            </lightning:combobox>
+                            <div style="margin-top:15px;text-align:right">
+                                <button class="slds-button slds-button_neutral" aria-label="Cancel and close" onclick="{!c.onclickCancelSelectObjCode}">취소</button>
+                                <aura:renderIf isTrue="{!v.isDone == false}">
+                                    <button class="slds-button slds-button_brand" onclick="{!c.onClickAddToCart}" disabled="true">Saving</button>
+                                    <aura:set attribute="else">
+                                        <button class="slds-button slds-button_brand" onclick="{!c.onClickAddToCart}">저장</button>
+                                    </aura:set>
+                                </aura:renderIf>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+            </div>
+        </aura:renderIf>
+
+        
+        <!-- 호환/세트 부품 팝업 -->
+        <c:PartCompSetModal 
+            isShowModal="{!v.isShowCompSet}"
+            partNumber="{!v.checkPartNumber}"
+            quantity="{!v.checkQuantity}"/>
+    </div>
+    
+</aura:component>
