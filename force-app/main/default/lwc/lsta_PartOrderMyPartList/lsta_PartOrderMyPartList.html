@@ -21,12 +21,20 @@
                         <div>
                             <div class="slds-grid slds-form-element__label">Wishlist</div>
                             <div class="slds-grid title-right">
-                                <h3>My wish list01</h3>
-                                <lightning-button-menu alternative-text="Wishlist List" variant="bare" class="wishlist-list">
-                                    <lightning-menu-item value="MenuItemOne" label="Menu Item One"></lightning-menu-item>
-                                    <lightning-menu-item value="MenuItemTwo" label="Menu Item Two"></lightning-menu-item>
-                                    <lightning-menu-item value="MenuItemThree" label="Menu Item Three"></lightning-menu-item>
-                                    <lightning-menu-item value="MenuItemFour" label="Menu Item Four"></lightning-menu-item>
+                                <h3>will be current wl label</h3>
+                                <lightning-button-menu 
+                                    alternative-text="Wishlist List" 
+                                    variant="bare" 
+                                    class="wishlist-list" 
+                                    onselect={handleListSelect}
+                                >
+                                    <template for:each={myPartsList} for:item="menuItem">
+                                        <lightning-menu-item 
+                                            key={menuItem.value} 
+                                            value={menuItem.value} 
+                                            label={menuItem.label}>
+                                        </lightning-menu-item>
+                                    </template>
                                 </lightning-button-menu>
                             </div>
                         </div>

@@ -1,5 +1,7 @@
 import { LightningElement, api } from 'lwc';
 
+import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
+
 export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     showCreateListModal;
@@ -9,7 +11,14 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     showUploadSection;
     displayNoData;
 
-    orderItems = [];
+    isDistributor;
+
+    wishlistList = [
+        { value: 'MenuItemOne', label: 'Menu Item One' },
+        { value: 'MenuItemTwo', label: 'Menu Item Two' },
+        { value: 'MenuItemThree', label: 'Menu Item Three' },
+        { value: 'MenuItemFour', label: 'Menu Item Four' }
+    ];
 
     selectedOrderRowKeys = []; // selected rows (by key-field)
 
@@ -33,32 +42,87 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         { label: 'Remark', fieldName: 'remark', initialWidth: 130 }
     ];
 
+    async connectedCallback() {
+        await this.reloadOrderItems();
+    }
+
+    async reloadOrderItems() {
+        try {
+            // param 안넘기는듯?
+            const { result, payload } = await getMyPartList();
+
+            if (result !== 'OK') {
+                displayNoData = true;
+                return;
+            }
+
+            const processed = payload.listWishlist.flatMap(element => {
+                if (!element.WishlistItems) {
+                    return [];
+                }
+
+                return element.WishlistItems.map(row => {
+                    const unitPrice = payload.mapPricebookEntry[row.Product2Id]?.UnitPrice ?? 0;
+                    const vatIncludeUnitPrice = Math.round(unitPrice * 1.1);
+
+                    return {
+                        id: row.Id,  // datatable key-field용
+                        salesStatus: row.Product2?.Part__r?.isSalesPart__c ? '' : '판매중지',
+                        partNo: row.Product2?.Part__r?.Partnum__c,
+                        oldPartNumber: row.Product2?.Part__r?.OldPartnum__c,
+                        partName: row.Product2?.Part__r?.NameKor__c,
+                        qty: row.Quantity__c,
+                        unitPrice: unitPrice,
+                        billedAmount: this.isDistributor
+                            ? row.Quantity__c * unitPrice
+                            : row.Quantity__c * vatIncludeUnitPrice,
+                        latestOrderDate: row.LastOrderedDate__c ? this.toFormatDate(row.LastOrderedDate__c) : null,
+                        latestOrderQuantity: row.LastQuantity__c ?? 0,
+                        registrationDate: this.toFormatDate(row.CreatedDate),
+                        modelName: row.Product2?.fm_Model_Names__c,
+                        notes: row.Product2?.REF__c,
+                        remark: row.Remark__c
+                    };
+                });
+            });
+
+            this.orderItems = processed;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    toFormatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+    }
+
     handleOrderRowSelection(event) {};
 
-    // 필요없을듯
-    handleRowAction(event) {};
-
-
-
+    handleListSelect(event) {
+        const selected = event.detail.value;
+        console.log('show ' +  selected + ' list');
+    }
 
     handleMenuSelect(event) {
         const selected = event.detail.value;
 
         switch (selected) {
             case 'create':
-                console.log('create');
+                console.log('create' + selected);
                 this.showCreateListModal = true;
                 break;
             case 'clear':
-                console.log('clear');
+                console.log('clear' + selected);
                 this.handleClickClearList();
                 break;
             case 'delete':
-                console.log('delete');
+                console.log('delete' + selected);
                 this.handleClickDeleteList();
                 break;
             case 'edit':
-                console.log('edit');
+                console.log('edit' + selected);
                 this.showEditListModal = true;
                 break;
             default:
