@@ -13,7 +13,8 @@ export default class Lsta_PartOrderMyPartListListModal extends LightningElement 
 
     formValues = {
         name: '',
-        description: ''
+        description: '',
+        Id: ''
     };
 
     connectedCallback() {
@@ -21,7 +22,8 @@ export default class Lsta_PartOrderMyPartListListModal extends LightningElement 
         if (this.action === 'edit' && this.initialRecord) {
             this.formValues = {
                 name: this.initialRecord?.Name || '',
-                description: this.initialRecord?.Description__c || ''
+                description: this.initialRecord?.Description__c || '',
+                Id: this.initialRecord?.Id || '',
             };
         }
         this.isLoading = false;
@@ -90,6 +92,7 @@ export default class Lsta_PartOrderMyPartListListModal extends LightningElement 
             const mapData = {
                 name: trimmedName,
                 description: this.formValues?.description ?? '',
+                Id: this.formValues?.Id ?? '',
             };
 
             let response;

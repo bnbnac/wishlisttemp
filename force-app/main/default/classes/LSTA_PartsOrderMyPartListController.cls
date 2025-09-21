@@ -112,75 +112,172 @@ public without sharing class LSTA_PartsOrderMyPartListController {
         }   
         return clsPartsOrderResponseWrapper;
     }
+
     @AuraEnabled
     public static PartsOrderResponseWrapper editMyPartList(Map<String, Object> mapData) {
-        PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
+        PartsOrderResponseWrapper responseWrapper = new PartsOrderResponseWrapper();
         try {
-            Wishlist clsWishlist = [SELECT Id,Name FROM Wishlist WHERE Id =: (String) mapData.get('Id') ];
-            clsWishlist.name = (String) mapData.get('name');
-            if(mapData.get('description') != null) clsWishlist.Description__c = (String) mapData.get('description');
-            Update clsWishlist;
-        } catch(Exception Ex) {
-            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
-            clsPartsOrderResponseWrapper.message = Ex.getStackTraceString();
-        }   
-        return clsPartsOrderResponseWrapper;
+            String wishlistId = (String) mapData.get('Id');
+            String name = ((String) mapData.get('name')) != null ? ((String) mapData.get('name')).trim() : null;
+            String description = (String) mapData.get('description');
+            description = description != null ? description.trim() : null;
+
+            if (String.isBlank(wishlistId)) {
+                responseWrapper.result = PartsOrderResponseWrapper.NOK;
+                responseWrapper.message = 'Wishlist Id is required.';
+                return responseWrapper;
+            }
+            if (String.isBlank(name)) {
+                responseWrapper.result = PartsOrderResponseWrapper.NOK;
+                responseWrapper.message = 'Name is required.';
+                return responseWrapper;
+            }
+
+            Wishlist wishlistRecord = [
+                SELECT Id, Name, Description__c, AccountId
+                FROM Wishlist
+                WHERE Id = :wishlistId
+                LIMIT 1
+            ];
+
+            if (isDuplicatedWishlistName(name, wishlistRecord.AccountId, wishlistId)) {
+                responseWrapper.result = PartsOrderResponseWrapper.NOK;
+                responseWrapper.message = 'duplicated';
+                return responseWrapper;
+            }
+
+            Boolean shouldUpdateName = (name != wishlistRecord.Name);
+            Boolean shouldUpdateDescription = false;
+
+            if (mapData.containsKey('description')) {
+                if (String.isNotBlank(description)) {
+                    shouldUpdateDescription = (description != wishlistRecord.Description__c);
+                } else {
+                    shouldUpdateDescription = String.isNotBlank(wishlistRecord.Description__c);
+                    description = '';
+                }
+            }
+
+            if (shouldUpdateName || shouldUpdateDescription) {
+                if (shouldUpdateName) {
+                    wishlistRecord.Name = name;
+                }
+                if (shouldUpdateDescription) {
+                    wishlistRecord.Description__c = description;
+                }
+                update wishlistRecord;
+            }
+
+            responseWrapper.result = PartsOrderResponseWrapper.OK;
+            responseWrapper.payload = wishlistRecord;
+            return responseWrapper;
+
+        } catch (Exception e) {
+            responseWrapper.result = PartsOrderResponseWrapper.NOK;
+            responseWrapper.message = e.getStackTraceString();
+            return responseWrapper;
+        }
     }
 
     @AuraEnabled
     public static PartsOrderResponseWrapper addMyPartList(Map<String, Object> mapData) {
-        PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
+        PartsOrderResponseWrapper responseWrapper = new PartsOrderResponseWrapper();
         try {
-            String name = ((String) mapData.get('name'))?.trim();
+            String name = ((String) mapData.get('name')) != null ? ((String) mapData.get('name')).trim() : null;
             String description = (String) mapData.get('description');
 
             if (String.isBlank(name)) {
-                clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
-                clsPartsOrderResponseWrapper.message = 'Name is required.';
-                return clsPartsOrderResponseWrapper;
+                responseWrapper.result = PartsOrderResponseWrapper.NOK;
+                responseWrapper.message = 'Name is required.';
+                return responseWrapper;
             }
 
-            Id clsWebStoreId = PartsOrderCommonController.getWebStoreIds();
-            Id clsAccountId = PartsOrderCommonController.getAccountIdByUserInfo(UserInfo.getUserId());
+            Id webStoreId = PartsOrderCommonController.getWebStoreIds();
+            Id accountId = PartsOrderCommonController.getAccountIdByUserInfo(UserInfo.getUserId());
 
-            if (isDuplicatedWishlistName(name, clsAccountId)) {
-                clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
-                clsPartsOrderResponseWrapper.message = 'duplicated';
-                return clsPartsOrderResponseWrapper;
+            if (isDuplicatedWishlistName(name, accountId, null)) {
+                responseWrapper.result = PartsOrderResponseWrapper.NOK;
+                responseWrapper.message = 'duplicated';
+                return responseWrapper;
             }
 
-            Wishlist clsWishlist = new Wishlist();
-            clsWishlist.Name = name;
-            clsWishlist.Description__c = description;
-            clsWishlist.WebStoreId = clsWebStoreId;
-            clsWishlist.AccountId = clsAccountId;
-            clsWishlist.CurrencyIsoCode = null;
+            Wishlist wishlistRecord = new Wishlist();
+            wishlistRecord.Name = name;
+            wishlistRecord.Description__c = description;
+            wishlistRecord.WebStoreId = webStoreId;
+            wishlistRecord.AccountId = accountId;
+            wishlistRecord.CurrencyIsoCode = null;
 
-            insert clsWishlist;
+            insert wishlistRecord;
+            String recordId = wishlistRecord.Id;
 
-            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.OK;
-            clsPartsOrderResponseWrapper.payload = clsWishlist;
-            return clsPartsOrderResponseWrapper;
+            wishlistRecord = [
+                SELECT
+                    Id,
+                    OwnerId,
+                    Name,
+                    CurrencyIsoCode,
+                    WebStoreId,
+                    AccountId,
+                    WishlistProductCount,
+                    CreatedDate,
+                    Description__c,
+                    CreatedById,
+                    LastModifiedDate,
+                    (
+                        SELECT
+                            Id,
+                            Name,
+                            Product2Id,
+                            Product2.Name,
+                            Product2.Part__r.Partnum__c,
+                            Product2.Part__r.OldPartnum__c,
+                            Product2.fm_Model_Names__c,
+                            isCompSet__c,
+                            Remark__c,
+                            Product2.Part__r.NameEng__c,
+                            Product2.Part__r.NameKor__c,
+                            Quantity__c,
+                            Product2.REF__c,
+                            Product2.PJUNIT__c,
+                            Product2.Part__r.Bigo__c,
+                            Product2.Part__r.isSalesPart__c,
+                            CreatedDate,
+                            LastOrderedDate__c,
+                            LastQuantity__c
+                        FROM WishlistItems
+                    )
+                FROM Wishlist
+                WHERE Id = :recordId
+            ];
 
-        } catch (Exception Ex) {
-            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
-            clsPartsOrderResponseWrapper.message = Ex.getMessage();
-            return clsPartsOrderResponseWrapper;
+            responseWrapper.result = PartsOrderResponseWrapper.OK;
+            responseWrapper.payload = wishlistRecord;
+            return responseWrapper;
+
+        } catch (Exception e) {
+            responseWrapper.result = PartsOrderResponseWrapper.NOK;
+            responseWrapper.message = e.getMessage();
+            return responseWrapper;
         }
     }
 
-    private static Boolean isDuplicatedWishlistName(String name, Id accountId) {
+    private static Boolean isDuplicatedWishlistName(String name, Id accountId, Id excludeId) {
         if (String.isBlank(name) || accountId == null) {
             return false;
         }
-        Integer existingCount = [
-            SELECT COUNT()
-            FROM Wishlist
-            WHERE AccountId = :accountId
-            AND Name != null
-            AND Name = :name
-            LIMIT 1
-        ];
+
+        String queryString = 
+            'SELECT COUNT() ' +
+            'FROM Wishlist ' +
+            'WHERE AccountId = :accountId ' +
+            'AND Name = :name';
+
+        if (excludeId != null) {
+            queryString += ' AND Id != :excludeId';
+        }
+
+        Integer existingCount = Database.countQuery(queryString);
         return existingCount > 0;
     }
 

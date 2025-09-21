@@ -6,6 +6,7 @@ import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartCha
 
 import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
 import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removePartList';
+import removeAllyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeAllyPartListItems';
 
 const MENU_MODAL_ACTION_CREATE = 'create';
 const MENU_MODAL_ACTION_EDIT = 'edit';
@@ -37,7 +38,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     //
     // menuVisible = true;
-    isLoading = false;
+    isLoading;
     showMenuModal = false;
     menuModalAction;
     //
@@ -111,6 +112,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     async queryMyPartList() {
+        this.isLoading = true;
         try {
             const { result, payload } = await getMyPartList();
             if (result !== 'OK') {
@@ -140,6 +142,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             console.error(error);
             this.myPartsList = [];
             this.myPartsListItem = {};
+        } finally {
+            this.isLoading = false;
         }
     }
 
@@ -224,11 +228,53 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
             default:
         }
+
+
+        console.log('handleMenuSelect');
+        console.log(this.myPartsList);
+
+    }
+
+    async handleClickClearList() {
+        this.isLoading = true;
+        const wishlistId = this.myPartsListItem.Id;
+
+        try {
+            const mapData = {
+                Id: wishlistId,
+            };
+
+            const response = await removeAllyPartListItems({ mapData });
+            if (response?.result !== 'OK') {
+                const message = response?.message || 'Delete failed.';
+                throw new Error(message);
+            }
+            this.showToast('Success', 'Wishlist deleted.', 'success');
+            
+            const index = this.wishlistIndexById[wishlistId];
+            if (index !== undefined) {
+                const updatedList = [...this.myPartsList];
+                updatedList.splice(index, 1);
+                this.myPartsList = updatedList;
+
+                this.wishlistIndexById = {};
+                this.myPartsList.forEach((item, idx) => {
+                    this.wishlistIndexById[item.Id] = idx;
+                });
+            }
+
+            // stack?
+            this.selectListByIndex(0);
+
+        } catch (error) {
+            this.showToast('Error', error?.message || 'Unexpected error.', 'error');
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     async handleClickDeleteList() {
         this.isLoading = true;
-
         const wishlistId = this.myPartsListItem.Id;
         try {
             const mapData = {
@@ -328,34 +374,31 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     async handleMenuModalSuccess(event) {
-        // const data = JSON.parse(JSON.stringify(event.detail));
         const data = event.detail;
         if (!data) {
             return;
         }
-
         const payload = data.payload;
 
         if (data.action === MENU_MODAL_ACTION_CREATE) {
             this.myPartsList = [...this.myPartsList, payload];
+
             this.wishlistIndexById[payload.Id] = this.myPartsList.length - 1;
             this.selectListByIndex(this.myPartsList.length - 1);
+
         } else if (data.action === MENU_MODAL_ACTION_EDIT) {
-            const index = wishlistIndexById[payload.Id];
+            const index = this.wishlistIndexById[payload.Id];
             if (index !== undefined) {
                 const updatedList = [...this.myPartsList];
-                updatedList[index] = { ...this.myPartsList[index], ...data };
+                updatedList[index] = { ...this.myPartsList[index], ...payload };
                 this.myPartsList = updatedList;
+
+                this.selectListByIndex(index);
             } else {
-                console.warn('리스트에서 해당 Id를 찾지 못했습니다:', data.Id);
+                console.warn('리스트에서 해당 Id를 찾지 못했습니다:', payload.Id);
             }
         }
-
-        // this.menuVisible = false;
-        // await Promise.resolve();
-        // this.menuVisible = true;;
     }
-
 
     handleOrderRowSelection(event) {};
     
