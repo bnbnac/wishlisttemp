@@ -118,8 +118,10 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             if (result !== 'OK') {
                 this.myPartsList = [];
                 this.myPartsListItem = {};
+                this.showToast('조회 실패', message || '내 파트 리스트 조회에 실패했습니다.', 'error');
                 return;
             }
+            console.log('queryMyPartList');
             console.log(payload);
 
             this.myPartsList = Array.isArray(payload.listWishlist) ? payload.listWishlist : [];
@@ -142,6 +144,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             console.error(error);
             this.myPartsList = [];
             this.myPartsListItem = {};
+            this.showToast('오류', error.body?.message || error.message || '내 파트 리스트 조회에 실패했습니다.', 'error');
         } finally {
             this.isLoading = false;
         }
@@ -229,10 +232,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             default:
         }
 
-
         console.log('handleMenuSelect');
         console.log(this.myPartsList);
-
     }
 
     async handleClickClearList() {
@@ -246,26 +247,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
             const response = await removeAllyPartListItems({ mapData });
             if (response?.result !== 'OK') {
-                const message = response?.message || 'Delete failed.';
+                const message = response?.message || 'Clear failed.';
                 throw new Error(message);
             }
-            this.showToast('Success', 'Wishlist deleted.', 'success');
-            
-            const index = this.wishlistIndexById[wishlistId];
-            if (index !== undefined) {
-                const updatedList = [...this.myPartsList];
-                updatedList.splice(index, 1);
-                this.myPartsList = updatedList;
-
-                this.wishlistIndexById = {};
-                this.myPartsList.forEach((item, idx) => {
-                    this.wishlistIndexById[item.Id] = idx;
-                });
-            }
-
-            // stack?
-            this.selectListByIndex(0);
-
+            delete this.myPartsListItem.WishlistItems;
+            this.showToast('Success', 'Wishlist cleared.', 'success');
         } catch (error) {
             this.showToast('Error', error?.message || 'Unexpected error.', 'error');
         } finally {
