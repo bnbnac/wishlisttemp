@@ -126,24 +126,64 @@ public without sharing class LSTA_PartsOrderMyPartListController {
         }   
         return clsPartsOrderResponseWrapper;
     }
+
     @AuraEnabled
     public static PartsOrderResponseWrapper addMyPartList(Map<String, Object> mapData) {
         PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
         try {
-            Wishlist clsWishlist = new Wishlist();
-            clsWishlist.Name = (String) mapData.get('name');
-            clsWishlist.Description__c = (String) mapData.get('description');            
-            clsWishlist.WebStoreId = PartsOrderCommonController.getWebStoreIds();
-            clsWishlist.AccountId = PartsOrderCommonController.getAccountIdByUserInfo(UserInfo.getUserId());
-            Insert clsWishlist;
-            clsPartsOrderResponseWrapper.payload = clsWishlist;
+            String name = ((String) mapData.get('name'))?.trim();
+            String description = (String) mapData.get('description');
 
-        } catch(Exception Ex) {
+            if (String.isBlank(name)) {
+                clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
+                clsPartsOrderResponseWrapper.message = 'Name is required.';
+                return clsPartsOrderResponseWrapper;
+            }
+
+            Id clsWebStoreId = PartsOrderCommonController.getWebStoreIds();
+            Id clsAccountId = PartsOrderCommonController.getAccountIdByUserInfo(UserInfo.getUserId());
+
+            if (isDuplicatedWishlistName(name, clsAccountId)) {
+                clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
+                clsPartsOrderResponseWrapper.message = 'duplicated';
+                return clsPartsOrderResponseWrapper;
+            }
+
+            Wishlist clsWishlist = new Wishlist();
+            clsWishlist.Name = name;
+            clsWishlist.Description__c = description;
+            clsWishlist.WebStoreId = clsWebStoreId;
+            clsWishlist.AccountId = clsAccountId;
+            clsWishlist.CurrencyIsoCode = null;
+
+            insert clsWishlist;
+
+            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.OK;
+            clsPartsOrderResponseWrapper.payload = clsWishlist;
+            return clsPartsOrderResponseWrapper;
+
+        } catch (Exception Ex) {
             clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
-            clsPartsOrderResponseWrapper.message = Ex.getStackTraceString() + ',' + Ex.getMessage() ;
-        }   
-        return clsPartsOrderResponseWrapper;
+            clsPartsOrderResponseWrapper.message = Ex.getMessage();
+            return clsPartsOrderResponseWrapper;
+        }
     }
+
+    private static Boolean isDuplicatedWishlistName(String name, Id accountId) {
+        if (String.isBlank(name) || accountId == null) {
+            return false;
+        }
+        Integer existingCount = [
+            SELECT COUNT()
+            FROM Wishlist
+            WHERE AccountId = :accountId
+            AND Name != null
+            AND Name = :name
+            LIMIT 1
+        ];
+        return existingCount > 0;
+    }
+
     /*
     테스트 정보 :     
     Map<String, Object> mapElement = new Map<String, Object>{'Quantity__c' => '11', 'Id' => '3osHy0000008OSYIA2'};

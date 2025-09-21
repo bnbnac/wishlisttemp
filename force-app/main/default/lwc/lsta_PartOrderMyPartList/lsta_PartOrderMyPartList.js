@@ -1,8 +1,14 @@
-import { LightningElement, api } from 'lwc';
+import { LightningElement } from 'lwc';
 import { publish, subscribe, MessageContext } from 'lightning/messageService';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+
 import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartChanged';
 
 import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
+import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removePartList';
+
+const MENU_MODAL_ACTION_CREATE = 'create';
+const MENU_MODAL_ACTION_EDIT = 'edit';
 
 export default class Lsta_PartOrderMyPartList extends LightningElement {
 
@@ -27,7 +33,15 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     showAddPartModal;
     showAddToWishlistModal;
     showUploadSection;
-    displayNoData;
+
+
+    //
+    // menuVisible = true;
+    isLoading = false;
+    showMenuModal = false;
+    menuModalAction;
+    //
+
 
     partsList = [];
     targetList = [];
@@ -87,6 +101,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     selectedOrderRowKeys = []; // selected rows (by key-field)
 
+    get displayNoData() {
+        const items = this.myPartsListItem?.WishlistItems;
+        return !items || items.length === 0;
+    }
+
     async connectedCallback() {
         await this.queryMyPartList();
     }
@@ -95,14 +114,12 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         try {
             const { result, payload } = await getMyPartList();
             if (result !== 'OK') {
-                displayNoData = true;
                 this.myPartsList = [];
                 this.myPartsListItem = {};
                 return;
             }
             console.log(payload);
 
-            this.displayNoData = false;
             this.myPartsList = Array.isArray(payload.listWishlist) ? payload.listWishlist : [];
             this.pricebookEntryMap = payload.mapPricebookEntry ?? {};
 
@@ -121,7 +138,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             }
         } catch (error) {
             console.error(error);
-            this.displayNoData = true;
             this.myPartsList = [];
             this.myPartsListItem = {};
         }
@@ -181,32 +197,72 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     handleMenuSelect(event) {
         const selected = event.detail.value;
-
         switch (selected) {
             case 'create':
-                console.log('create' + selected);
-                this.showCreateListModal = true;
+                console.log('create');
+                this.menuModalAction = MENU_MODAL_ACTION_CREATE;
+                this.selectedWishlist = null;
+                this.showMenuModal = true;
                 break;
+
+            case 'edit':
+                console.log('edit');
+                this.menuModalAction = MENU_MODAL_ACTION_EDIT;
+                this.selectedWishlist = this.myPartsListItem; // 현재 선택된 리스트 기준
+                this.showMenuModal = true;
+                break;
+
             case 'clear':
-                console.log('clear' + selected);
+                console.log('clear');
                 this.handleClickClearList();
                 break;
+
             case 'delete':
-                console.log('delete' + selected);
+                console.log('delete');
                 this.handleClickDeleteList();
                 break;
-            case 'edit':
-                console.log('edit' + selected);
-                this.showEditListModal = true;
-                break;
+
             default:
         }
     }
 
+    async handleClickDeleteList() {
+        this.isLoading = true;
 
+        const wishlistId = this.myPartsListItem.Id;
+        try {
+            const mapData = {
+                Id: wishlistId,
+            };
 
+            const response = await removePartList({ mapData });
+            if (response?.result !== 'OK') {
+                const message = response?.message || 'Delete failed.';
+                throw new Error(message);
+            }
+            this.showToast('Success', 'Wishlist deleted.', 'success');
+            
+            const index = this.wishlistIndexById[wishlistId];
+            if (index !== undefined) {
+                const updatedList = [...this.myPartsList];
+                updatedList.splice(index, 1);
+                this.myPartsList = updatedList;
 
+                this.wishlistIndexById = {};
+                this.myPartsList.forEach((item, idx) => {
+                    this.wishlistIndexById[item.Id] = idx;
+                });
+            }
 
+            // stack?
+            this.selectListByIndex(0);
+
+        } catch (error) {
+            this.showToast('Error', error?.message || 'Unexpected error.', 'error');
+        } finally {
+            this.isLoading = false;
+        }
+    }
 
     async handleClickAddPart(event) {
             console.log('async handleClickAddPart');
@@ -254,6 +310,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         // 인쇄 전용 레이아웃 팝업 또는 window.print()
     }
 
+    // 서버를 건들고오자
     async handleClickAddToCart(event) {
             console.log('async handleClickAddToCart');
         try {
@@ -264,6 +321,51 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
+    handleMenuModalClose() {
+        this.menuModalAction = null;
+        this.selectedWishlist = null;
+        this.showMenuModal = false;
+    }
+
+    async handleMenuModalSuccess(event) {
+        // const data = JSON.parse(JSON.stringify(event.detail));
+        const data = event.detail;
+        if (!data) {
+            return;
+        }
+
+        const payload = data.payload;
+
+        if (data.action === MENU_MODAL_ACTION_CREATE) {
+            this.myPartsList = [...this.myPartsList, payload];
+            this.wishlistIndexById[payload.Id] = this.myPartsList.length - 1;
+            this.selectListByIndex(this.myPartsList.length - 1);
+        } else if (data.action === MENU_MODAL_ACTION_EDIT) {
+            const index = wishlistIndexById[payload.Id];
+            if (index !== undefined) {
+                const updatedList = [...this.myPartsList];
+                updatedList[index] = { ...this.myPartsList[index], ...data };
+                this.myPartsList = updatedList;
+            } else {
+                console.warn('리스트에서 해당 Id를 찾지 못했습니다:', data.Id);
+            }
+        }
+
+        // this.menuVisible = false;
+        // await Promise.resolve();
+        // this.menuVisible = true;;
+    }
+
 
     handleOrderRowSelection(event) {};
+    
+    showToast(title, message, variant) {
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title: title,
+                message: message,
+                variant: variant || 'info'
+            })
+        );
+    }
 }

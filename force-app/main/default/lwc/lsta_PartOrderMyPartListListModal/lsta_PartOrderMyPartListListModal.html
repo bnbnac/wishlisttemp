@@ -1,16 +1,67 @@
-<!--  
-* ============================================================ 
-* File Name   : lsta_PartOrderMyPartListListModal.html  
-* Description : wishlist 리스트모달. 목록 생성, 목록 삭제
-* Author      : Evander
-* Modification Log  
-* ============================================================ 
-* Ver  Date          Author         Modification   
-* ============================================================  
-* 1.0  2025-09-18    Evander        Created 
-* ============================================================  
-* TODO
---> 
 <template>
-    
+    <div class="setProductModal">
+        
+        <template if:true={isLoading}>
+            <lightning-spinner size="small" alternative-text="Loading"></lightning-spinner>
+        </template>
+
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading-01" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+
+                <div class="slds-modal__header">
+                    <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">{modalTitle}</h1>
+                </div>
+
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                    <div class="slds-form-element">
+                        <!-- <label class="slds-form-element__label" for="input-my-parts-list-name">* Input the name of wishlist to {action}.</label> -->
+                        <div class="slds-form-element__control">
+                            <lightning-input
+                                type="text"
+                                id="input-my-parts-list-name"
+                                data-id="inputMyPartsListName"
+                                placeholder="My Parts List Name"
+                                required
+                                label={titleLabel}
+                                value={formValues.name}
+                                onchange={handleNameChange}>
+                            </lightning-input>
+                        </div>
+                    </div>
+
+                    <div class="slds-form-element">
+                        <!-- <label class="slds-form-element__label" for="textarea-my-parts-list-description">Input the description of wishlist to {action}.</label> -->
+                        <div class="slds-form-element__control">
+                            <lightning-textarea
+                                id="textarea-my-parts-list-description"
+                                data-id="inputMyPartsListDescription"
+                                placeholder="My Parts List Description"
+                                label={descriptionLable}
+                                value={formValues.description}
+                                onchange={handleDescriptionChange}>
+                            </lightning-textarea>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:15px; text-align:right">
+                        <lightning-button
+                            class="button-spacing"
+                            variant="neutral"
+                            label="Cancel"
+                            aria-label="Cancel and close"
+                            onclick={handleClickClose}>
+                        </lightning-button>
+                        <lightning-button
+                            class="button-spacing"
+                            variant="brand"
+                            label="Save"
+                            onclick={handleClickSave}>
+                        </lightning-button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </div>
 </template>
