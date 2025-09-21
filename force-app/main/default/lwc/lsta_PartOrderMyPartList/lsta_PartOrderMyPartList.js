@@ -37,7 +37,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
 
     //
-    // menuVisible = true;
     isLoading;
     showMenuModal = false;
     menuModalAction;
@@ -90,10 +89,10 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     isSelectObjCode = false;
 
     orderTypeOptions = [
-        { label: '일반주문', value: 'Default Delivery' },
-        { label: '정기주문', value: 'StandingOrder Delivery' },
-        { label: '직송주문', value: 'DirectOrder Delivery' },
-        { label: '직납주문', value: 'DirectPaymentOrder Delivery' }
+        { label: 'Default Delivery', value: 'Default Delivery' }, // 일반주문
+        { label: 'StandingOrder Delivery', value: 'StandingOrder Delivery' }, // 정기주문
+        { label: 'DirectOrder Delivery', value: 'DirectOrder Delivery' }, // 직송주문
+        { label: 'DirectPaymentOrder Delivery', value: 'DirectPaymentOrder Delivery' } // 직납주문
     ];
 
     selectedOrderType = 'Default Delivery';
@@ -206,32 +205,21 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         const selected = event.detail.value;
         switch (selected) {
             case 'create':
-                console.log('create');
                 this.menuModalAction = MENU_MODAL_ACTION_CREATE;
-                this.selectedWishlist = null;
                 this.showMenuModal = true;
                 break;
-
             case 'edit':
-                console.log('edit');
                 this.menuModalAction = MENU_MODAL_ACTION_EDIT;
-                this.selectedWishlist = this.myPartsListItem; // 현재 선택된 리스트 기준
                 this.showMenuModal = true;
                 break;
-
             case 'clear':
-                console.log('clear');
                 this.handleClickClearList();
                 break;
-
             case 'delete':
-                console.log('delete');
                 this.handleClickDeleteList();
                 break;
-
             default:
         }
-
         console.log('handleMenuSelect');
         console.log(this.myPartsList);
     }
@@ -296,16 +284,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    async handleClickAddPart(event) {
-            console.log('async handleClickAddPart');
-        try {
-            this.isLoading = true;
-            // 파트 추가 로직
-        } finally {
-            this.isLoading = false;
-        }
+    handleClickAddPart(event) {
+        console.log('handleClickAddPart');
+        this.showAddPartModal = true;
     }
-
+    
     async handleClickDeletePart(event) {
             console.log('async handleClickDeletePart');
         try {
@@ -355,7 +338,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     handleMenuModalClose() {
         this.menuModalAction = null;
-        this.selectedWishlist = null;
         this.showMenuModal = false;
     }
 

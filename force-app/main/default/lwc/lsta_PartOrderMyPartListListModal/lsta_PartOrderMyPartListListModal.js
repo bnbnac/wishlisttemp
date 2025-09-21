@@ -9,7 +9,7 @@ export default class Lsta_PartOrderMyPartListListModal extends LightningElement 
 
     @api action; // create || edit
     @api initialRecord = null;
-    isLoading = false;
+    isLoading;
 
     formValues = {
         name: '',
@@ -35,10 +35,6 @@ export default class Lsta_PartOrderMyPartListListModal extends LightningElement 
 
     get modalTitle() {
         return this.isCreate ? 'Create Wishlist' : 'Edit Wishlist';
-    }
-
-    get primaryButtonLabel() {
-        return this.isCreate ? 'Save' : 'Save';
     }
 
     get titleLabel() {

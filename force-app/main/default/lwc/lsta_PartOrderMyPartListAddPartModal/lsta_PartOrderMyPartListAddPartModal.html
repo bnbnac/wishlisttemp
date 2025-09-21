@@ -1,16 +1,101 @@
-<!--  
-* ============================================================ 
-* File Name   : lsta_PartOrderMyPartListAddPartModal.html  
-* Description : wishlist 부품 추가 모달
-* Author      : Evander
-* Modification Log  
-* ============================================================ 
-* Ver  Date          Author         Modification   
-* ============================================================  
-* 1.0  2025-09-18    Evander        Created 
-* ============================================================  
-* TODO
---> 
 <template>
-    
+    <div class="setProductModal">
+        
+        <template if:true={isLoading}>
+            <lightning-spinner size="small" alternative-text="Loading"></lightning-spinner>
+        </template>
+
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading-01" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+
+                <div class="slds-modal__header">
+                    <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">{modalTitle}</h1>
+                </div>
+
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                    <div class="slds-form-element">
+                        <div class="slds-form-element__control">
+                            <lightning-input
+                                type="text"
+                                id="input-my-parts-list-name"
+                                data-id="inputMyPartsListName"
+                                placeholder="My Parts List Name"
+                                required
+                                label={titleLabel}
+                                value={formValues.name}
+                                onchange={handleNameChange}>
+                            </lightning-input>
+                        </div>
+                    </div>
+
+                    <div class="slds-form-element">
+                        <div class="slds-form-element__control">
+                            <lightning-textarea
+                                id="textarea-my-parts-list-description"
+                                data-id="inputMyPartsListDescription"
+                                placeholder="My Parts List Description"
+                                label={descriptionLable}
+                                value={formValues.description}
+                                onchange={handleDescriptionChange}>
+                            </lightning-textarea>
+                        </div>
+                    </div>
+
+
+
+                    <div class="slds-form-element">
+                        <div class="slds-form-element__control">
+
+
+                        </div>
+                    </div>
+
+                    <!-- 검색버튼 -->
+
+                    <!-- 테이블 -->
+                    <template if:false={displayNoData}>
+                        <lightning-datatable
+                            class="c-list-container"
+                            key-field="id"
+                            data={wishlistItemsDataTableRows}
+                            columns={columns}
+                            max-row-selection="100"
+                            selected-rows={selectedOrderRowKeys}
+                            onrowselection={handleOrderRowSelection}
+                            onrowaction={handleRowAction}>
+                        </lightning-datatable>
+                    </template>
+                    <!-- 데이터 없을시 -->
+                    <template if:true={displayNoData}>
+                        <div class="empty-wrap">
+                            <div class="empty-icon">
+                                <lightning-icon icon-name="utility:picklist_type" variant="inverse"></lightning-icon>
+                            </div>
+                            <p>Your wishlist is empty!</p>
+                        </div>
+                    </template>
+
+
+
+                    <div style="margin-top:15px; text-align:right">
+                        <lightning-button
+                            class="button-spacing"
+                            variant="neutral"
+                            label="Cancel"
+                            aria-label="Cancel and close"
+                            onclick={handleClickClose}>
+                        </lightning-button>
+                        <lightning-button
+                            class="button-spacing"
+                            variant="brand"
+                            label="Save"
+                            onclick={handleClickSave}>
+                        </lightning-button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </div>
 </template>
