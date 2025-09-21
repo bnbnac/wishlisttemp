@@ -1,30 +1,10 @@
 import { LightningElement, api } from 'lwc';
+import { publish, subscribe, MessageContext } from 'lightning/messageService';
+import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartChanged';
 
 import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
 
 export default class Lsta_PartOrderMyPartList extends LightningElement {
-
-    showCreateListModal;
-    showEditListModal;
-    showAddPartModal;
-    showAddToWishlistModal;
-    showUploadSection;
-    displayNoData;
-
-    isDistributor;
-
-    wishlistList = [
-        { value: 'MenuItemOne', label: 'Menu Item One' },
-        { value: 'MenuItemTwo', label: 'Menu Item Two' },
-        { value: 'MenuItemThree', label: 'Menu Item Three' },
-        { value: 'MenuItemFour', label: 'Menu Item Four' }
-    ];
-
-    selectedOrderRowKeys = []; // selected rows (by key-field)
-
-    orderItems = [
-        { salesStatus: 'In Stock', partNo: '20021224', oldPartNumber: 'A1280240', partName: 'NUT-HEX 2 TY-S305040013', qty: 10, unitPrice: '$1,025,761.00', billedAmount: '$1,025,761.00', latestOrderDate: '2023-10-01', latestOrderQuantity: 5, registrationDate: '2023-01-15', modelName: 'XU6158, XU6163, XU6168, XU5055, XU5065, XU6158, XU6168, XU6158, XU6168, XU5000 ALL', notes: 'Urgent', remark: 'First order' },
-    ];
 
     columns = [
         { label: 'Sales Status', fieldName: 'salesStatus', initialWidth: 140 },
@@ -42,54 +22,145 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         { label: 'Remark', fieldName: 'remark', initialWidth: 130 }
     ];
 
+    showCreateListModal;
+    showEditListModal;
+    showAddPartModal;
+    showAddToWishlistModal;
+    showUploadSection;
+    displayNoData;
+
+    partsList = [];
+    targetList = [];
+    myPartsListColumns = [];
+    partsToAddToMyPartsListColumns = [];
+
+    // 서버에서 listWishlist 를 list로 주기 때문
+    wishlistIndexById = {};
+    // 전체 데이터
+    myPartsList = [];
+    // 전체 데이터 중 찜목록 하나
+    myPartsListItem = {};
+    // Datatable 출력용
+    wishlistItemsDataTableRows = [];
+
+    isDone = true;
+    isDoneSearch = false;
+    isNewPartList = false;
+    isEditMyPartListName = false;
+    isAddPartsInPartList = false;
+
+    myPartsListId = '';
+
+    selectedBuffer = [];
+    selectedBufferTarget = [];
+    selectedBufferByAdd = [];
+
+    isUploadMyPartListFile = false;
+    isCloneMyParts = false;
+
+    partsCloneTableColums = []; // (원문 표기 유지)
+    isTypeClone = true;
+
+    draftValues = [];
+    draftValueMap = {}; // 필요 시 new Map() 으로 교체 가능
+
+    isShowCompSet = false;
+    checkPartNumber = {};
+    checkQuantity = 0;
+
+    selectedLeftModalBuffer = [];
+    partsToCart = [];
+
+    isDistributor = false;
+    isSelectObjCode = false;
+
+    orderTypeOptions = [
+        { label: '일반주문', value: 'Default Delivery' },
+        { label: '정기주문', value: 'StandingOrder Delivery' },
+        { label: '직송주문', value: 'DirectOrder Delivery' },
+        { label: '직납주문', value: 'DirectPaymentOrder Delivery' }
+    ];
+
+    selectedOrderType = 'Default Delivery';
+
+    sitePrefix = '';
+
+    selectedOrderRowKeys = []; // selected rows (by key-field)
+
     async connectedCallback() {
-        await this.reloadOrderItems();
+        await this.queryMyPartList();
     }
 
-    async reloadOrderItems() {
+    async queryMyPartList() {
         try {
-            // param 안넘기는듯?
             const { result, payload } = await getMyPartList();
-
             if (result !== 'OK') {
                 displayNoData = true;
+                this.myPartsList = [];
+                this.myPartsListItem = {};
                 return;
             }
+            console.log(payload);
 
-            const processed = payload.listWishlist.flatMap(element => {
-                if (!element.WishlistItems) {
-                    return [];
-                }
+            this.displayNoData = false;
+            this.myPartsList = Array.isArray(payload.listWishlist) ? payload.listWishlist : [];
+            this.pricebookEntryMap = payload.mapPricebookEntry ?? {};
 
-                return element.WishlistItems.map(row => {
-                    const unitPrice = payload.mapPricebookEntry[row.Product2Id]?.UnitPrice ?? 0;
-                    const vatIncludeUnitPrice = Math.round(unitPrice * 1.1);
+            if (this.myPartsList.length > 0) {
 
-                    return {
-                        id: row.Id,  // datatable key-field용
-                        salesStatus: row.Product2?.Part__r?.isSalesPart__c ? '' : '판매중지',
-                        partNo: row.Product2?.Part__r?.Partnum__c,
-                        oldPartNumber: row.Product2?.Part__r?.OldPartnum__c,
-                        partName: row.Product2?.Part__r?.NameKor__c,
-                        qty: row.Quantity__c,
-                        unitPrice: unitPrice,
-                        billedAmount: this.isDistributor
-                            ? row.Quantity__c * unitPrice
-                            : row.Quantity__c * vatIncludeUnitPrice,
-                        latestOrderDate: row.LastOrderedDate__c ? this.toFormatDate(row.LastOrderedDate__c) : null,
-                        latestOrderQuantity: row.LastQuantity__c ?? 0,
-                        registrationDate: this.toFormatDate(row.CreatedDate),
-                        modelName: row.Product2?.fm_Model_Names__c,
-                        notes: row.Product2?.REF__c,
-                        remark: row.Remark__c
-                    };
+                this.myPartsList.forEach((wishlist, index) => {
+                    if (wishlist?.Id) {
+                        this.wishlistIndexById[wishlist.Id] = index;
+                    }
                 });
-            });
 
-            this.orderItems = processed;
+                this.selectListByIndex(0);
+
+            } else {
+                this.myPartsListItem = {};
+            }
         } catch (error) {
             console.error(error);
+            this.displayNoData = true;
+            this.myPartsList = [];
+            this.myPartsListItem = {};
         }
+    }
+
+    formatWishlistItemForDataTable(wishlistItem) {
+        if (!wishlistItem) {
+            return null;
+        }
+
+        const unitPrice = this.pricebookEntryMap?.[wishlistItem.Product2Id]?.UnitPrice ?? 0;
+        const vatIncludedUnitPrice = Math.round(unitPrice * 1.1);
+
+        return {
+            id: wishlistItem.Id,
+            salesStatus: wishlistItem.Product2?.Part__r?.isSalesPart__c ? '' : '판매중지',
+            partNo: wishlistItem.Product2?.Part__r?.Partnum__c,
+            oldPartNumber: wishlistItem.Product2?.Part__r?.OldPartnum__c,
+            partName: wishlistItem.Product2?.Part__r?.NameKor__c,
+            quantity: wishlistItem.Quantity__c,
+            unitPrice: unitPrice,
+            billedAmount: this.isDistributor
+                ? wishlistItem.Quantity__c * unitPrice
+                : wishlistItem.Quantity__c * vatIncludedUnitPrice,
+            latestOrderDate: wishlistItem.LastOrderedDate__c
+                ? this.toFormatDate(wishlistItem.LastOrderedDate__c)
+                : null,
+            latestOrderQuantity: wishlistItem.LastQuantity__c ?? 0,
+            registrationDate: this.toFormatDate(wishlistItem.CreatedDate),
+            modelName: wishlistItem.Product2?.fm_Model_Names__c,
+            notes: wishlistItem.Product2?.REF__c,
+            remark: wishlistItem.Remark__c
+        };
+    }
+    
+    formatWishlistItemsForDataTable() {
+        return (this.myPartsListItem.WishlistItems ?? []).map((wishlistItem) =>
+            this.formatWishlistItemForDataTable(wishlistItem)
+        );
     }
 
     toFormatDate(dateString) {
@@ -98,11 +169,14 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
     }
 
-    handleOrderRowSelection(event) {};
-
     handleListSelect(event) {
-        const selected = event.detail.value;
-        console.log('show ' +  selected + ' list');
+        const wishlistId = event.detail.value;
+        this.selectListByIndex(this.wishlistIndexById[wishlistId]);
+    }
+
+    selectListByIndex(wishlistIndex) {
+        this.myPartsListItem = this.myPartsList[wishlistIndex];
+        this.wishlistItemsDataTableRows = this.formatWishlistItemsForDataTable();
     }
 
     handleMenuSelect(event) {
@@ -190,4 +264,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
+
+    handleOrderRowSelection(event) {};
 }

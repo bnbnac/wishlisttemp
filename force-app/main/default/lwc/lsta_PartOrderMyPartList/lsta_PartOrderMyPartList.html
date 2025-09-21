@@ -21,18 +21,18 @@
                         <div>
                             <div class="slds-grid slds-form-element__label">Wishlist</div>
                             <div class="slds-grid title-right">
-                                <h3>will be current wl label</h3>
+                                <h3>{myPartsListItem.Name}</h3>
                                 <lightning-button-menu 
                                     alternative-text="Wishlist List" 
                                     variant="bare" 
                                     class="wishlist-list" 
                                     onselect={handleListSelect}
                                 >
-                                    <template for:each={myPartsList} for:item="menuItem">
+                                    <template for:each={myPartsList} for:item="myParts">
                                         <lightning-menu-item 
-                                            key={menuItem.value} 
-                                            value={menuItem.value} 
-                                            label={menuItem.label}>
+                                            key={myParts.Id} 
+                                            value={myParts.Id} 
+                                            label={myParts.Name}>
                                         </lightning-menu-item>
                                     </template>
                                 </lightning-button-menu>
@@ -131,10 +131,11 @@
             </div>
         </template>
 
+        <!-- 테이블 분리?-->
         <lightning-datatable
             class="c-list-container"
             key-field="id"
-            data={orderItems}
+            data={wishlistItemsDataTableRows}
             columns={columns}
             max-row-selection="100"
             selected-rows={selectedOrderRowKeys}
@@ -155,11 +156,19 @@
         <!-- 모달 -->
         <template if:true={showCreateListModal}>
             <c-lsta_-part-order-my-part-list-list-modal
-            ></c-lsta_-part-order-my-part-list-list-modal>
+                action="create"
+                initial-record={selectedWishlist}
+                oncancel={handleModalCancel}
+                onsuccess={handleModalSuccess}>
+            </c-lsta_-part-order-my-part-list-list-modal>
         </template>
         <template if:true={showEditListModal}>
             <c-lsta_-part-order-my-part-list-list-modal
-            ></c-lsta_-part-order-my-part-list-list-modal>
+                action="edit"
+                initial-record={selectedWishlist}
+                oncancel={handleModalCancel}
+                onsuccess={handleModalSuccess}>
+            </c-lsta_-part-order-my-part-list-list-modal>
         </template>
         <template if:true={showAddPartModal}>
             <c-lsta_-part-order-my-part-list-add-part-modal
