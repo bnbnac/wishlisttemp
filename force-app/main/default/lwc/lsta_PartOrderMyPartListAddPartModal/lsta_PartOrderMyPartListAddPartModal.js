@@ -9,10 +9,10 @@ const DUPLICATED = 'duplicated';
 export default class Lsta_PartOrderMyPartListAddPartModal extends LightningElement {
 
     columns = [
-        { label: 'Sales Status', fieldName: 'salesStatus', initialWidth: 140 },
         { label: 'Part No', fieldName: 'partNo', initialWidth: 120 },
         { label: 'Old Part Number', fieldName: 'oldPartNumber', initialWidth: 150 },
         { label: 'Part Name', fieldName: 'partName', initialWidth: 200 },
+        { label: 'Model Name', fieldName: 'modelName', initialWidth: 140 },
     ];
 
     isLoading;
