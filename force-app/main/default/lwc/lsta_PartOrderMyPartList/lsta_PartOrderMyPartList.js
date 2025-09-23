@@ -383,43 +383,38 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         if (!data) {
             return;
         }
-        const payload = data.payload;
-        console.log(payload);
 
-        // 이벤트에 이런걸 보내서 찾아야함
-        const wishlist = data.wishlistId;
+        const { wishlistId, payload } = data;
 
-        const updateWishlistItems = (listWishlist, payload) => {
+        // wishlist err
+        const wishlistIndex = this.myPartsList.findIndex(w => w.Id === wishlistId);
+        if (wishlistIndex === -1) return;
+        const wishlist = this.myPartsList[wishlistIndex];
+
+        const updateWishlistItems = (payload) => {
             payload.forEach(item => {
-                const wishlistIndex = listWishlist.findIndex(w => w.Id === item.WishlistId);
-                if (wishlistIndex === -1) return;
 
-                const wishlist = listWishlist[wishlistIndex];
                 const items = wishlist.WishlistItems || [];
-
                 const itemIndex = items.findIndex(wi => wi.Id === item.Id);
 
                 if (itemIndex !== -1) {
-                // 기존 아이템 업데이트 (spread 사용)
-                items[itemIndex] = {
-                    ...items[itemIndex],
-                    ...item
-                };
+                    items[itemIndex] = {
+                        ...items[itemIndex],
+                        ...item
+                    };
                 } else {
-                // 새 아이템 추가
-                items.push({ ...item });
+                    items.push({ ...item });
                 }
-
-                // wishlist 업데이트
-                listWishlist[wishlistIndex] = {
-                ...wishlist,
-                WishlistItems: items,
-                WishlistProductCount: items.length
+                this.myPartsList[wishlistIndex] = {
+                    ...this.myPartsList[wishlistIndex],
+                    WishlistItems: items,
+                    WishlistProductCount: items.length
                 };
             });
         };
-        updateWishlistItems(this.myPartsList.listWishlist, payload);
-
+        updateWishlistItems(payload);
+        // this.myPartsList = [...this.myPartsList];
+        this.selectListByIndex(wishlistIndex);
     };
     
     showToast(title, message, variant) {

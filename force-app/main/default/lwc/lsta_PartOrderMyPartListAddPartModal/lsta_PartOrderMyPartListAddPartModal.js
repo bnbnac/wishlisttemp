@@ -63,7 +63,6 @@ export default class Lsta_PartOrderMyPartListAddPartModal extends LightningEleme
         this.isLoading = true;
         try {
             const response = await searchParts({ mapData });
-            console.log(response);
             const payload = response?.payload ?? [];
 
             this.searchedList = Array.isArray(payload) ? payload : [];
@@ -172,8 +171,9 @@ export default class Lsta_PartOrderMyPartListAddPartModal extends LightningEleme
                 return;
             }
 
+            const wishlistId = this.myPartsListItem.Id;
             const mapData = {
-                myPartsList: this.myPartsListItem.Id,
+                myPartsList: wishlistId,
                 partsList: this.addedList,
             };
             const response = await addMyPartListItems({ mapData });
@@ -185,11 +185,10 @@ export default class Lsta_PartOrderMyPartListAddPartModal extends LightningEleme
             this.showToast('Success', 'Wishlist saved.', 'success');
             
             const payload = response?.payload ?? {};
-            console.log(payload);
             this.dispatchEvent(new CustomEvent('success', {
                 detail: {
-                    // action: this.action,
-                    // AccountId, CreatedById, CreatedDate, CurrencyIsoCode, Id, LastModifiedDate, Name, OwnerId, WebStoreId, WishlistProductCount 등 전체 포함
+                    wishlistId: wishlistId,
+                    // 화면갱신용 쿼리해서 payload에 넣음
                     payload: payload
                 },
                 bubbles: true,

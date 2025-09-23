@@ -320,6 +320,8 @@ public without sharing class LSTA_PartsOrderMyPartListController {
             Map<String,Decimal> mapQuantity = new Map<String,Decimal>();
             for(Object clsPart : partsList) {
                 Part__c clsPartCast = (Part__c) System.JSON.deserialize(Json.serialize(clsPart), Part__c.class);
+                // evander
+                if (clsPartCast.Partnum__c == null) continue;
                 listPartNumber.add(clsPartCast.Partnum__c);
                 mapQuantity.put(clsPartCast.Partnum__c,clsPartCast.Quantity__c != null ?  clsPartCast.Quantity__c : 1);
             }                        
@@ -327,6 +329,10 @@ public without sharing class LSTA_PartsOrderMyPartListController {
             Map<String,WishlistItem> mapWishlistItemWithProduct = PartsOrderMyPartListWorkerController.getWhishListItems(myPartsListId);
             for(String partNumber : listPartNumber) {
                 Product2 clsProduduct = mapProductWithPartNumnber.get(partNumber);
+                // evander
+                if (clsProduduct == null) {
+                    continue;
+                }
                 WishlistItem clsWishlistItem = mapWishlistItemWithProduct.get(clsProduduct.Id);
                 if(clsWishlistItem == null) {
                     clsWishlistItem = new WishlistItem();
@@ -341,33 +347,42 @@ public without sharing class LSTA_PartsOrderMyPartListController {
             }
             Upsert listMyPartsListItem;
 
-            upsertedMyPartsListItemList = [
-                SELECT
-                    Id,
-                    Name,
-                    Product2Id,
-                    Product2.Name,
-                    Product2.Part__r.Partnum__c,
-                    Product2.Part__r.OldPartnum__c,
-                    Product2.fm_Model_Names__c,
-                    isCompSet__c,
-                    Remark__c,
-                    Product2.Part__r.NameEng__c,
-                    Product2.Part__r.NameKor__c,
-                    Quantity__c,
-                    Product2.REF__c,
-                    Product2.PJUNIT__c,
-                    Product2.Part__r.Bigo__c,
-                    Product2.Part__r.isSalesPart__c,
-                    CreatedDate,
-                    LastOrderedDate__c,
-                    LastQuantity__c
-                FROM WishlistItems
-                WHERE Id = :recordId
-            ];
+            // payload : evander
+            Set<Id> upsertedIds = new Set<Id>();
+            for (WishlistItem wi : listMyPartsListItem) {
+                upsertedIds.add(wi.Id);
+            }
 
+            List<WishlistItem> upsertedMyPartsListItemList = new List<WishlistItem>();
+            if (!upsertedIds.isEmpty()) {
+                upsertedMyPartsListItemList = [
+                    SELECT
+                        Id,
+                        Name,
+                        Product2Id,
+                        Product2.Name,
+                        Product2.Part__r.Partnum__c,
+                        Product2.Part__r.OldPartnum__c,
+                        Product2.fm_Model_Names__c,
+                        isCompSet__c,
+                        Remark__c,
+                        Product2.Part__r.NameEng__c,
+                        Product2.Part__r.NameKor__c,
+                        Quantity__c,
+                        Product2.REF__c,
+                        Product2.PJUNIT__c,
+                        Product2.Part__r.Bigo__c,
+                        Product2.Part__r.isSalesPart__c,
+                        CreatedDate,
+                        LastOrderedDate__c,
+                        LastQuantity__c
+                    FROM WishlistItem
+                    WHERE Id IN :upsertedIds
+                ];
+            }
 
-            clsPartsOrderResponseWrapper.payload = listMyPartsListItem;
+            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.OK;
+            clsPartsOrderResponseWrapper.payload = upsertedMyPartsListItemList;
 
         } catch(Exception Ex) {
             clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
