@@ -312,8 +312,9 @@ public without sharing class LSTA_PartsOrderMyPartListController {
     public static PartsOrderResponseWrapper addMyPartListItems(Map<String, Object> mapData) {
         PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
         try {
-            String myPartsListId = (String) mapData.get('myParstList');
+            String myPartsListId = (String) mapData.get('myPartsList');
             List<Object> partsList = (List<Object>) mapData.get('partsList');
+
             List<WishlistItem> listMyPartsListItem = new List<WishlistItem>();
             List<String> listPartNumber = new List<String>();
             Map<String,Decimal> mapQuantity = new Map<String,Decimal>();
@@ -339,6 +340,33 @@ public without sharing class LSTA_PartsOrderMyPartListController {
                 listMyPartsListItem.add(clsWishlistItem);
             }
             Upsert listMyPartsListItem;
+
+            upsertedMyPartsListItemList = [
+                SELECT
+                    Id,
+                    Name,
+                    Product2Id,
+                    Product2.Name,
+                    Product2.Part__r.Partnum__c,
+                    Product2.Part__r.OldPartnum__c,
+                    Product2.fm_Model_Names__c,
+                    isCompSet__c,
+                    Remark__c,
+                    Product2.Part__r.NameEng__c,
+                    Product2.Part__r.NameKor__c,
+                    Quantity__c,
+                    Product2.REF__c,
+                    Product2.PJUNIT__c,
+                    Product2.Part__r.Bigo__c,
+                    Product2.Part__r.isSalesPart__c,
+                    CreatedDate,
+                    LastOrderedDate__c,
+                    LastQuantity__c
+                FROM WishlistItems
+                WHERE Id = :recordId
+            ];
+
+
             clsPartsOrderResponseWrapper.payload = listMyPartsListItem;
 
         } catch(Exception Ex) {

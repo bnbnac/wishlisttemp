@@ -2,107 +2,193 @@
 import { LightningElement, api } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-import addMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.addMyPartList';
-import editMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.editMyPartList';
+import addMyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.addMyPartListItems';
+import searchParts from '@salesforce/apex/LSTA_PartsOrderMyPartListController.searchParts';
 
 const DUPLICATED = 'duplicated';
 export default class Lsta_PartOrderMyPartListAddPartModal extends LightningElement {
 
-    columns = [
-        { label: 'Part No', fieldName: 'partNo', initialWidth: 120 },
-        { label: 'Old Part Number', fieldName: 'oldPartNumber', initialWidth: 150 },
-        { label: 'Part Name', fieldName: 'partName', initialWidth: 200 },
-        { label: 'Model Name', fieldName: 'modelName', initialWidth: 140 },
+    @api myPartsListItem;
+    partsList;
+
+    searchColumns = [
+        { label: 'Part No', fieldName: 'Partnum__c', initialWidth: 120 },
+        { label: 'Old Part Number', fieldName: 'OldPartnum__c', initialWidth: 150 },
+        { label: 'Part Name', fieldName: 'NameEng__c', initialWidth: 200 },
+        { label: 'Model Name', fieldName: 'Product__r.fm_Model_Names__c', initialWidth: 140 },
     ];
+
+    formValues = {
+        partNumber: '',
+        oldPartNumber: '',
+        nameDescription: ''
+    };
 
     isLoading;
 
-    get isCreate() {
-        return this.action === 'create';
-    }
+    searchedList = [];
+    searchedListTableRows = [];
+    addedList = [];
+    addedListTableRows = [];
 
-    get modalTitle() {
-        return 'Add Part';
-    }
+    get isSearchedListTableRowsEmpty() { return !this.searchedListTableRows || this.searchedListTableRows.length < 1; }
+    get isAddedListTableRowsEmpty() { return !this.addedListTableRows || this.addedListTableRows.length < 1; }
 
-    handleNameChange(event) {
+    handleFormChange(event) {
+        const field = event.target.dataset.field;
+        const value = event.target.value?.trim() ?? '';
+
         this.formValues = {
             ...this.formValues,
-            name: event.target.value
+            [field]: value
         };
     }
 
-    handleDescriptionChange(event) {
-        this.formValues = {
-            ...this.formValues,
-            description: event.target.value
+    async handleSearchPartsToAdd() {
+
+        const partNumber = (this.formValues.partNumber || '').trim().length >= 4 ? (this.formValues.partNumber || '').trim() : '';
+        const nameDescription = (this.formValues.nameDescription || '').trim().length >= 2 ? (this.formValues.nameDescription || '').trim() : '';
+        const oldPartNumber = (this.formValues.oldPartNumber || '').trim().length >= 4 ? (this.formValues.oldPartNumber || '').trim() : '';
+        if (!(partNumber || nameDescription || oldPartNumber)) {
+            this.showToast('Search Failed', 'Please enter at least one search criterion.', 'error');
+            return;
+        } 
+
+        const mapData = {
+            partNumber: partNumber,
+            nameDescription: nameDescription,
+            oldPartNumber: oldPartNumber
+        };
+
+        this.isLoading = true;
+        try {
+            const response = await searchParts({ mapData });
+            console.log(response);
+            const payload = response?.payload ?? [];
+
+            this.searchedList = Array.isArray(payload) ? payload : [];
+            this.convertSearchedList();
+        } catch (error) {
+            const message = error?.body?.message ?? error?.message ?? '검색 중 오류가 발생했습니다.';
+            this.showToast('Part Search', message, 'error');
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    convertSearchedList() {
+        this.searchedListTableRows = (this.searchedList || []).map((record) => this.toSearchedListTableRow(record));
+    }
+    
+    toSearchedListTableRow(record) {
+        const id = record?.Id ?? record?.id;
+        const partNo = record?.Partnum__c ?? record?.partNo ?? '';
+        const oldPartNumber = record?.OldPartnum__c ?? record?.oldPartNumber ?? '';
+        const nameDescription = record?.NameEng__c || '';
+        const modelName =
+            record?.Product__r?.fm_Model_Names__c ??
+            record?.Product__r?.ModelNames__c ??
+            record?.modelName ??
+            '';
+
+        return {
+            id: id,
+            partNo: partNo,
+            oldPartNumber: oldPartNumber,
+            nameDescription: nameDescription,
+            modelName: modelName,
+        };
+    }
+    
+    handleAddRow(event) {
+        const rowId = event?.currentTarget?.dataset?.rowid ?? event?.target?.dataset?.rowid;
+        const targetRow = this.searchedList.find(
+            row => row.Id === rowId
+        );
+        if (!targetRow) {
+            this.showToast('Not found', 'Unable to find the selected row', 'error');
+            return;
+        }
+
+        const exists = this.addedList.some(
+            row => row.Id === rowId
+        );
+        if (!exists) {
+            this.addedList = [
+                ...this.addedList,
+                targetRow
+            ];
+        } else {
+            this.showToast('Already Exists', 'Already exists in the Selected Parts.', 'error');
+            return;
+        }
+
+        this.convertAddedList();
+    }
+
+    convertAddedList() {
+        this.addedListTableRows = (this.addedList || []).map((record) => this.toAddedListTableRow(record));
+    }
+    
+    toAddedListTableRow(record) {
+        const id = record?.Id ?? record?.id;
+        const partNo = record?.Partnum__c ?? record?.partNo ?? '';
+        const oldPartNumber = record?.OldPartnum__c ?? record?.oldPartNumber ?? '';
+        const nameDescription = record?.NameEng__c || record?.nameDescription || '';
+        const quantity = record?.Quantity__c || '';
+        return {
+            id: id,
+            partNo: partNo,
+            oldPartNumber: oldPartNumber,
+            nameDescription: nameDescription,
+            quantity: quantity,
         };
     }
 
-    handleDescriptionChange(event) {
-        this.formValues = {
-            ...this.formValues,
-            description: event.target.value
-        };
+    handleRemoveRow(event) {
+        const rowId = event.target.dataset.rowid;
+        this.addedListTableRows = (this.addedListTableRows || []).filter(
+            row => row.id !== rowId
+        );
+        this.addedList = (this.addedList || []).filter(
+            row => row.Id !== rowId
+        );
     }
-
-    handleChange(event) {
-
-    }
-
-
-    async handleSearch() {
-    }
-
 
     async handleClickSave() {
         this.isLoading = true;
 
         try {
-            const trimmedName = (this.formValues.name || '').trim();
-
-            if (!trimmedName) {
-                this.showToast('Validation', 'Name is required.', 'warning');
+            if (!this.addedListTableRows || this.addedListTableRows.length < 1) {
+                this.showToast('No parts to add', 'Please search, select and add parts', 'error');
                 return;
             }
 
-            // TODO: 클라이언트 선검증을 유지하고 싶다면 this.isDuplicated로 관리
-            // if (this.isDuplicated) {
-            //     this.showToast('Validation', 'Name is duplicated.', 'warning');
-            //     return;
-            // }
+            const invalidRow = this.addedListTableRows.find(
+                row => !Number.isInteger(row.quantity) || row.quantity < 1
+            );
+            if (invalidRow) {
+                this.showToast('Invalid Quantity', `Part No ${invalidRow.partNo} Quantity must be an integer over 0.`, 'error');
+                return;
+            }
 
             const mapData = {
-                name: trimmedName,
-                description: this.formValues?.description ?? '',
-                Id: this.formValues?.Id ?? '',
+                myPartsList: this.myPartsListItem.Id,
+                partsList: this.addedList,
             };
-
-            let response;
-            if (this.isCreate) {
-                response = await addMyPartList({ mapData });
-            } else {
-                response = await editMyPartList({ mapData });
-            }
-
-            if (response?.message === DUPLICATED) {
-                this.showToast('Validation', 'A wishlist with the same name already exists.', 'warning');
-                return;
-            }
+            const response = await addMyPartListItems({ mapData });
 
             if (response?.result !== 'OK') {
                 const message = response?.message || 'Save failed.';
                 throw new Error(message);
             }
-
             this.showToast('Success', 'Wishlist saved.', 'success');
             
             const payload = response?.payload ?? {};
-            console.log('payload');
             console.log(payload);
             this.dispatchEvent(new CustomEvent('success', {
                 detail: {
-                    action: this.action,
+                    // action: this.action,
                     // AccountId, CreatedById, CreatedDate, CurrencyIsoCode, Id, LastModifiedDate, Name, OwnerId, WebStoreId, WishlistProductCount 등 전체 포함
                     payload: payload
                 },
@@ -122,6 +208,31 @@ export default class Lsta_PartOrderMyPartListAddPartModal extends LightningEleme
         } finally {
             this.isLoading = false;
         }
+    }
+
+    handleQuantityChange(event) {
+        const rowId = event.target.dataset.rowid;
+        const newQty = Number(event.target.value);
+
+        this.addedListTableRows = this.addedListTableRows.map(row => {
+            return row.id === rowId
+                ? { ...row, quantity: newQty }
+                : row;
+        });
+        this.addedList = this.addedList.map(item => {
+            return item.Id === rowId
+                ? { ...item, Quantity__c: newQty }
+                : item;
+        });
+    }
+
+    handleClickClose() {
+        this.dispatchEvent(
+            new CustomEvent('close', {
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     showToast(title, message, variant) {

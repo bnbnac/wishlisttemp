@@ -19,7 +19,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         { label: 'Old Part Number', fieldName: 'oldPartNumber', initialWidth: 150 },
         { label: 'Part Name', fieldName: 'partName', initialWidth: 200 },
         { label: 'Qty', fieldName: 'qty', type: 'number', initialWidth: 105 },
-        { label: 'Unit Price', fieldName: 'unitPrice', initialWidth: 135 },
+        { label: 'Unit Price', fieldName: 'unitPrice', type: 'currency', initialWidth: 135 },
         { label: 'Billed Amount', fieldName: 'billedAmount', type: 'currency', initialWidth: 150 },
         { label: 'Latest Order Date', fieldName: 'latestOrderDate', type: 'date', initialWidth: 160 },
         { label: 'Latest Order Quantity', fieldName: 'latestOrderQuantity', type: 'number', initialWidth: 185 },
@@ -62,12 +62,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     isNewPartList = false;
     isEditMyPartListName = false;
     isAddPartsInPartList = false;
-
-    myPartsListId = '';
-
-    selectedBuffer = [];
-    selectedBufferTarget = [];
-    selectedBufferByAdd = [];
 
     isUploadMyPartListFile = false;
     isCloneMyParts = false;
@@ -162,15 +156,15 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             salesStatus: wishlistItem.Product2?.Part__r?.isSalesPart__c ? '' : '판매중지',
             partNo: wishlistItem.Product2?.Part__r?.Partnum__c,
             oldPartNumber: wishlistItem.Product2?.Part__r?.OldPartnum__c,
-            partName: wishlistItem.Product2?.Part__r?.NameKor__c,
-            quantity: wishlistItem.Quantity__c,
+            partName: wishlistItem.Product2?.Part__r?.NameEng__c,
+            qty: wishlistItem.Quantity__c,
             unitPrice: unitPrice,
             billedAmount: this.isDistributor
                 ? wishlistItem.Quantity__c * unitPrice
                 : wishlistItem.Quantity__c * vatIncludedUnitPrice,
             latestOrderDate: wishlistItem.LastOrderedDate__c
                 ? this.toFormatDate(wishlistItem.LastOrderedDate__c)
-                : null,
+                : '-',
             latestOrderQuantity: wishlistItem.LastQuantity__c ?? 0,
             registrationDate: this.toFormatDate(wishlistItem.CreatedDate),
             modelName: wishlistItem.Product2?.fm_Model_Names__c,
@@ -189,6 +183,18 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         if (!dateString) return '';
         const date = new Date(dateString);
         return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+    }
+
+    handleDivClick() {
+        const menu = this.template.querySelector('[data-id="wishlistMenu"]');
+        if (menu) {
+            const triggerButton = menu.shadowRoot.querySelector('button');
+            console.log(triggerButton);
+            if (triggerButton) {
+                console.log('triggerButton exists');
+                triggerButton.click();
+            }
+        }
     }
 
     handleListSelect(event) {
@@ -288,8 +294,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         console.log('handleClickAddPart');
         this.showAddPartModal = true;
     }
-    
-    async handleClickDeletePart(event) {
+
+    handleClickDeletePart(event) {
             console.log('async handleClickDeletePart');
         try {
             this.isLoading = true;
@@ -310,7 +316,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         // 서버에서 템플릿 생성/다운로드 트리거
     }
 
-    async handleClickAddToWishlist(event) {
+    handleClickAddToWishlist(event) {
             console.log('async handleClickAddToWishlist');
         try {
             this.isLoading = true;
@@ -326,7 +332,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     // 서버를 건들고오자
-    async handleClickAddToCart(event) {
+    handleClickAddToCart(event) {
             console.log('async handleClickAddToCart');
         try {
             this.isLoading = true;
@@ -341,7 +347,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         this.showMenuModal = false;
     }
 
-    async handleMenuModalSuccess(event) {
+    handleAddPartModalClose() {
+        this.showAddPartModal = false;
+    }
+
+    handleMenuModalSuccess(event) {
         const data = event.detail;
         if (!data) {
             return;
@@ -368,7 +378,49 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    handleOrderRowSelection(event) {};
+    handleAddPartModalSuccess(event) {
+        const data = event.detail;
+        if (!data) {
+            return;
+        }
+        const payload = data.payload;
+        console.log(payload);
+
+        // 이벤트에 이런걸 보내서 찾아야함
+        const wishlist = data.wishlistId;
+
+        const updateWishlistItems = (listWishlist, payload) => {
+            payload.forEach(item => {
+                const wishlistIndex = listWishlist.findIndex(w => w.Id === item.WishlistId);
+                if (wishlistIndex === -1) return;
+
+                const wishlist = listWishlist[wishlistIndex];
+                const items = wishlist.WishlistItems || [];
+
+                const itemIndex = items.findIndex(wi => wi.Id === item.Id);
+
+                if (itemIndex !== -1) {
+                // 기존 아이템 업데이트 (spread 사용)
+                items[itemIndex] = {
+                    ...items[itemIndex],
+                    ...item
+                };
+                } else {
+                // 새 아이템 추가
+                items.push({ ...item });
+                }
+
+                // wishlist 업데이트
+                listWishlist[wishlistIndex] = {
+                ...wishlist,
+                WishlistItems: items,
+                WishlistProductCount: items.length
+                };
+            });
+        };
+        updateWishlistItems(this.myPartsList.listWishlist, payload);
+
+    };
     
     showToast(title, message, variant) {
         this.dispatchEvent(

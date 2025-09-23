@@ -1,165 +1,105 @@
-.buttonBackground {
-    background-color: gray;
-    padding: 12px;
-    text-align: right;
+
+.c-container {
+    border: 1px solid var(--custom-color-gray3);
+    min-height: 26.6875rem;
+}
+.title {
+    justify-content: space-between;
+    padding:0.75rem;
 }
 
-.searchBox {
-    margin-bottom: 10px;
-    padding: 10px 10px 10px 10px;
-    border: 1px solid #e1e1e1;
-    background-color: #f1f1f1;
-    margin-bottom: 0px;
-    margin-right: 0px;
-    margin-left: 0px;
+.slds-grid_vertical-align-center {
+    gap: .75rem;
 }
 
-.setProductModal .searchBox div {
-    flex: 1 1 auto;
+.header .title-right .slds-form-element__label{
+    max-width: inherit;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color:var(--custom-color-black1);
+    padding:0;
+    margin:0;
 }
 
-.setProductModal .searchBox div:last-child {
-    flex: 1 1 6rem;
+.wishlist-list {
+    padding: 0 .1406rem .2813rem;
 }
 
-.dataTableWrapper {
-    border-top: 1px solid #e1e1e1;
+.button-wrap {
+    gap: .5rem;
+    flex-wrap: wrap;
+    justify-content: end;
+    flex: 1;
 }
 
-.margin-top-10 {
-    margin-top: 10px;
+.slds-badge {
+    background: #EEF2FF;
+    border-color: #EEF2FF;
+    color: #3755C3;
 }
 
-.margin-bottom-10 {
-    margin-bottom: 10px;
+lightning-button-icon {
+    --slds-c-button-color-background: #fff;
+    --slds-c-icon-color-foreground: var(--custom-color-secondary1);
 }
 
-.slds-page-header__meta-text {
-    margin-left: 12px;
-    margin-top: 10px;
-}
-
-.slds-page-header {
-    border: 1px solid #e1e1e1;
-}
-
-.file-selector-image .slds-file-selector {
-    display: block;
-    margin-bottom: 10px;
-}
-
-.file-selector-image .slds-file-selector__dropzone {
-    display: flex;
-    justify-content: center;
-    align-content: center;
+.upload-csv {
     align-items: center;
-    margin: auto;
-    padding: 1rem;
-}
-
-.file-selector-image .slds-file-selector__dropzone slot {
-    width: 100%;
-}
-
-.file-selector-image .slds-file-selector_files .slds-file-selector__body {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    padding: .75rem;
     text-align: center;
 }
 
-.file-selector-image .slds-file-selector_files .slds-file-selector__text {
-    margin-top: 0.75rem;
+.empty-wrap {
+    background-color: var(--custom-color-gray4);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-top: 5.5rem;
+    padding-bottom: 6.7188rem;
 }
+
+.empty-wrap .empty-icon {
+    background-color: var(--custom-color-gray2);
+    border-radius: 50%;
+    margin-bottom: .9063rem;
+    width: 4.6875rem;
+    height: 4.6875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-wrap p {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #AFAFAF;
+}
+
 .button-spacing {
     margin-left: 10px;   /* 버튼 간격 */
 }
-.slds-required {
-    display: none;
+
+.inactive {
+    background-color: darkslategray;
 }
 
-abbr {
-    display: none;
-}
-
-/* 모바일 768px 이하 (48em) */
-@media (max-width: 48em) {
-    /* 상단 버튼 부분 정리 */
-    .slds-page-header__row {
+@media (min-width: 48em) {
+    .slds-modal__container {
+        max-width: 80vh;
+    }
+    .title {
         flex-direction: column;
-        gap: 15px;
+        padding: .5rem .75rem;
     }
 
-    .slds-page-header__col-actions {
-        width: 100%;
+    .button-wrap {
+        margin-top: .5rem;
     }
 
-    /* 드롭다운 */
-    .cstm__search_drop .slds-dropdown-trigger {
-        width: 100%;
-    }
-
-    .cstm__search_drop .slds-dropdown-trigger .slds-button {
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        border-radius: 3px;
-    }
-
-    .slds-page-header__controls {
-        display: inline-block;
-        width: 100%;
-    }
-
-    .cstm__search_drop .slds-dropdown-trigger .slds-button > .slds-m-left_xx-small {
-        display: none;
-    }
-
-    .cstm__search_drop .slds-dropdown {
-        width: 100%;
-    }
-
-    /* CRUD 버튼 */
-    .slds-page-header__controls .slds-button-group-list {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .slds-dropdown-trigger.cstm__row02 {
-        background: #fff;
-        width: 100%;
-        justify-content: space-between;
-        display: flex;
-        border-radius: 3px;
-        overflow: hidden;
-    }
-
-    .slds-dropdown-trigger.cstm__row02 button {
-        border: none;
-        height: 35px;
-        width: 25%;
-    }
-
-    .slds-dropdown-trigger.cstm__row02 span {
-        width: 25%;
-    }
-
-    .slds-dropdown-trigger.cstm__row02 span button {
-        width: 100%;
-    }
-
-    /* row02 버튼그룹 */
-    .cstm__row02_btn_wrap button {
-        margin-bottom: 4px;
-    }
-
-    .cstm__row02_btn_wrap button:last-child {
-        margin-bottom: 0;
-    }
-}
-
-/* 모바일 400px 이하 (28em) */
-@media (max-width: 28em) {
-    .slds-dropdown-trigger.cstm__row02 button {
-        padding: 0 6px;
+    .button-wrap lightning-button {
+        flex: 1;
     }
 }

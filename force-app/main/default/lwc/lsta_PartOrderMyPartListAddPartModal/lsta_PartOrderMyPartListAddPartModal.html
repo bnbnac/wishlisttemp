@@ -1,80 +1,203 @@
 <template>
     <div class="setProductModal">
-        
-        <template if:true={isLoading}>
-            <lightning-spinner size="small" alternative-text="Loading"></lightning-spinner>
-        </template>
 
         <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading-01" class="slds-modal slds-fade-in-open">
             <div class="slds-modal__container">
 
+                <template if:true={isLoading}>
+                    <lightning-spinner size="small" alternative-text="Loading"></lightning-spinner>
+                </template>
+
                 <div class="slds-modal__header">
-                    <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">{modalTitle}</h1>
+                    <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">Add Part</h1>
+                    <h1 id="modal-heading-02">Search, select, and add parts to your wishlist.</h1>
                 </div>
 
-                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
-                    <div class="slds-form-element">
-                        <div class="slds-form-element__control">
-                            <lightning-input
-                                type="text"
-                                id="input-my-parts-list-name"
-                                data-id="inputMyPartsListName"
-                                placeholder="My Parts List Name"
-                                required
-                                label={titleLabel}
-                                value={formValues.name}
-                                onchange={handleNameChange}>
-                            </lightning-input>
+                <!-- 검색 -->
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-2">
+                    <div class="slds-grid slds-gutters">
+                        
+                        <!-- Part Number -->
+                        <div class="slds-col">
+                            <div class="slds-form-element">
+                                <div class="slds-form-element__control">
+                                    <lightning-input
+                                        type="text"
+                                        id="input-my-parts-part-number"
+                                        label="Part No"
+                                        value={formValues.partNumber}
+                                        data-field="partNumber"
+                                        onchange={handleFormChange}>
+                                    </lightning-input>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Old Part Number -->
+                        <div class="slds-col">
+                            <div class="slds-form-element">
+                                <div class="slds-form-element__control">
+                                    <lightning-input
+                                        id="input-my-parts-old-part-number"
+                                        label="Old Part Number"
+                                        value={formValues.oldPartNumber}
+                                        data-field="oldPartNumber"
+                                        onchange={handleFormChange}>
+                                    </lightning-input>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Part Name -->
+                        <div class="slds-col">
+                            <div class="slds-form-element">
+                                <div class="slds-form-element__control">
+                                    <lightning-input
+                                        id="input-my-parts-part-name"
+                                        label="Part Name"
+                                        value={formValues.nameDescription}
+                                        data-field="nameDescription"
+                                        onchange={handleFormChange}>
+                                    </lightning-input>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search Button -->
+                        <div class="slds-col slds-align-bottom">
+                            <lightning-button
+                                class="button-spacing"
+                                variant="neutral"
+                                label="Search"
+                                onclick={handleSearchPartsToAdd}>
+                            </lightning-button>
                         </div>
                     </div>
+                </div>
 
-                    <div class="slds-form-element">
-                        <div class="slds-form-element__control">
-                            <lightning-textarea
-                                id="textarea-my-parts-list-description"
-                                data-id="inputMyPartsListDescription"
-                                placeholder="My Parts List Description"
-                                label={descriptionLable}
-                                value={formValues.description}
-                                onchange={handleDescriptionChange}>
-                            </lightning-textarea>
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-3">
+
+                    <!-- 검색결과 테이블 -->
+                    <template if:false={isSearchedListTableRowsEmpty}>
+                        <div class="slds-m-top_medium">
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered" id="table-search-parts" data-id="tableSearchParts">
+                                <thead>
+                                    <tr>
+                                        <th scope="col"><div class="slds-truncate">Add</div></th>
+                                        <th scope="col"><div class="slds-truncate">Part No</div></th>
+                                        <th scope="col"><div class="slds-truncate">Old Part Number</div></th>
+                                        <th scope="col"><div class="slds-truncate">Part Name</div></th>
+                                        <th scope="col"><div class="slds-truncate">Model Name</div></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={searchedListTableRows} for:item="row">
+                                        <tr key={row.id} id={row.id} data-id="rowSelectedPart">
+                                            <td data-label="Action">
+                                                <lightning-button-icon
+                                                    icon-name="utility:add"
+                                                    alternative-text="Add"
+                                                    title="Add"
+                                                    id={row.id}
+                                                    data-id="buttonSelectedPartsAdd"
+                                                    data-rowid={row.id}
+                                                    onclick={handleAddRow}>
+                                                </lightning-button-icon>
+                                            </td>
+                                            <td data-label="Part No">
+                                                <div class="slds-truncate">{row.partNo}</div>
+                                            </td>
+                                            <td data-label="Old Part Number">
+                                                <div class="slds-truncate">{row.oldPartNumber}</div>
+                                            </td>
+                                            <td data-label="Part Name">
+                                                <div class="slds-truncate">{row.nameDescription}</div>
+                                            </td>
+                                            <td data-label="Model Name">
+                                                <div class="slds-truncate">{row.modelName}</div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-
-
-
-                    <div class="slds-form-element">
-                        <div class="slds-form-element__control">
-
-
-                        </div>
-                    </div>
-
-                    <!-- 검색버튼 -->
-
-                    <!-- 테이블 -->
-                    <template if:false={displayNoData}>
-                        <lightning-datatable
-                            class="c-list-container"
-                            key-field="id"
-                            data={wishlistItemsDataTableRows}
-                            columns={columns}
-                            max-row-selection="100"
-                            selected-rows={selectedOrderRowKeys}
-                            onrowselection={handleOrderRowSelection}
-                            onrowaction={handleRowAction}>
-                        </lightning-datatable>
                     </template>
+
+                    
                     <!-- 데이터 없을시 -->
-                    <template if:true={displayNoData}>
+                    <template if:true={isSearchedListTableRowsEmpty}>
                         <div class="empty-wrap">
                             <div class="empty-icon">
                                 <lightning-icon icon-name="utility:picklist_type" variant="inverse"></lightning-icon>
                             </div>
-                            <p>Your wishlist is empty!</p>
+                            <p>No data to display</p>
                         </div>
                     </template>
 
+                    <!-- 선택결과 및 수량 테이블 -->
+                    <div style="border-width: 2px 0px 0px 0px;border-style: solid;padding-top: 20px;"></div>
+                    <h1>Selectd Parts</h1>
+                    <template if:false={isAddedListTableRowsEmpty}>
+                        <div class="slds-m-top_medium">
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered" id="table-selected-parts" data-id="tableSelectedParts">
+                                <thead>
+                                    <tr>
+                                        <!-- <th scope="col"><div class="slds-truncate">Select</div></th> -->
+                                        <th scope="col"><div class="slds-truncate">Remove</div></th>
+                                        <th scope="col"><div class="slds-truncate">Part No</div></th>
+                                        <th scope="col"><div class="slds-truncate">Old Part Number</div></th>
+                                        <th scope="col"><div class="slds-truncate">Part Name</div></th>
+                                        <th scope="col"><div class="slds-truncate">Quantity</div></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={addedListTableRows} for:item="row">
+                                        <tr key={row.id} id={row.id} data-id="rowSelectedPart" class={row.class}>
+                                            <!-- <td>
+                                                <lightning-input type="checkbox"
+                                                                data-rowid={row.id}
+                                                                checked={row.isSelected}
+                                                                onchange={handleSelectRow}>
+                                                </lightning-input>
+                                            </td> -->
+                                            <td data-label="Action">
+                                                <lightning-button-icon
+                                                    icon-name="utility:delete"
+                                                    alternative-text="Delete"
+                                                    title="Delete"
+                                                    id={row.id}
+                                                    data-id="buttonSelectedPartsRemove"
+                                                    data-rowid={row.id}
+                                                    onclick={handleRemoveRow}>
+                                                </lightning-button-icon>
+                                            </td>
+                                            <td data-label="Part No">
+                                                <div class="slds-truncate">{row.partNo}</div>
+                                            </td>
+                                            <td data-label="Old Part Number">
+                                                <div class="slds-truncate">{row.oldPartNumber}</div>
+                                            </td>
+                                            <td data-label="Part Name">
+                                                <div class="slds-truncate">{row.nameDescription}</div>
+                                            </td>
+                                            <td data-label="Quantity">
+                                                <lightning-input
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={row.quantity}
+                                                    id={row.id}
+                                                    data-id="inputSelectedPartsQuantity"
+                                                    data-rowid={row.id}
+                                                    onchange={handleQuantityChange}>
+                                                </lightning-input>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
 
 
                     <div style="margin-top:15px; text-align:right">

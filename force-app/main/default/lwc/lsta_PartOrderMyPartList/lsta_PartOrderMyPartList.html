@@ -30,27 +30,32 @@ toFormatDate 북미포맷
                         <lightning-icon icon-name="standard:budget" size="medium"></lightning-icon>
                         <div>
                             <div class="slds-grid slds-form-element__label">Wishlist</div>
-                            <div class="slds-grid title-right">
+                            <div class="slds-grid title-right" onclick={handleDivClick}>
                                 <h3>{myPartsListItem.Name}</h3>
-                                <!-- <template if:true={menuVisible}> -->
-                                    <lightning-button-menu 
-                                        alternative-text="Wishlist List" 
-                                        variant="bare" 
-                                        class="wishlist-list" 
-                                        onselect={handleListSelect}
-                                    >
-                                        <template for:each={myPartsList} for:item="myParts">
-                                            <lightning-menu-item 
-                                                key={myParts.Id} 
-                                                value={myParts.Id} 
-                                                label={myParts.Name}>
-                                            </lightning-menu-item>
-                                        </template>
-                                    </lightning-button-menu>
-                                <!-- </template> -->
+                                <lightning-button-menu 
+                                    alternative-text="Wishlist List" 
+                                    variant="bare" 
+                                    class="wishlist-list" 
+                                    onselect={handleListSelect}
+                                    data-id="wishlistMenu"
+                                >
+                                    <template for:each={myPartsList} for:item="myParts">
+                                        <lightning-menu-item 
+                                            key={myParts.Id} 
+                                            value={myParts.Id} 
+                                            label={myParts.Name}>
+                                        </lightning-menu-item>
+                                    </template>
+                                </lightning-button-menu>
                             </div>
                         </div>
-                        <lightning-button-menu alternative-text="Menu" onselect={handleMenuSelect}>
+                        <lightning-button-menu
+                            icon-name="standard:settings"
+                            alternative-text="Menu"
+                            onselect={handleMenuSelect}
+                            icon-size="medium"
+                            class="settings-menu-only"
+                        >
                             <lightning-menu-item value="create" label="Create List" icon-name="utility:add"></lightning-menu-item>
                             <lightning-menu-item value="clear" label="Clear List" icon-name="utility:clear"></lightning-menu-item>
                             <lightning-menu-item value="delete" label="Delete List" icon-name="utility:delete"></lightning-menu-item>
@@ -177,6 +182,8 @@ toFormatDate 북미포맷
         </template>
         <template if:true={showAddPartModal}>
             <c-lsta_-part-order-my-part-list-add-part-modal
+                my-parts-list-item={myPartsListItem}
+                onclose={handleAddPartModalClose}
             ></c-lsta_-part-order-my-part-list-add-part-modal>
         </template>
         <template if:true={showAddToWishlistModal}>
