@@ -356,8 +356,18 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     handleClickDownloadCsvForm(event) {
-            console.log('handleClickDownloadCsvForm(event');
-        // 서버에서 템플릿 생성/다운로드 트리거
+        let csvContent = "data:text/csv;charset=utf-8,";
+        let csvCols = ['Wishlist Name','Part No','Qty','Remark'];
+        csvContent = "\ufeff" + csvCols.join(',') + "\r\n";
+        // let encodedUri = encodeURI(csvContent);
+        let encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'Wishlist Upload Form.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     handleClickAddToWishlist(event) {
