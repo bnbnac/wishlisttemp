@@ -148,7 +148,7 @@ toFormatDate 북미포맷
             </div>
         </template>
 
-        <!-- 테이블 및에거랑 같이 분리?-->
+        <!-- 테이블 밑에거랑 같이 분리?-->
         <template if:false={displayNoData}>
             <lightning-datatable
                 class="c-list-container"
@@ -156,9 +156,8 @@ toFormatDate 북미포맷
                 data={wishlistItemsDataTableRows}
                 columns={columns}
                 max-row-selection="100"
-                selected-rows={selectedOrderRowKeys}
-                onrowselection={handleOrderRowSelection}
-                onrowaction={handleRowAction}>
+                selected-rows={selectedRowIds}
+                onrowselection={handleRowSelection}>
             </lightning-datatable>
         </template>
         <!-- 데이터 없을시 -->

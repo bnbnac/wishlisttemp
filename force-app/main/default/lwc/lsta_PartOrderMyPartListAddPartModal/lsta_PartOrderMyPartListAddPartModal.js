@@ -31,8 +31,8 @@ export default class Lsta_PartOrderMyPartListAddPartModal extends LightningEleme
     addedList = [];
     addedListTableRows = [];
 
-    get isSearchedListTableRowsEmpty() { return !this.searchedListTableRows || this.searchedListTableRows.length < 1; }
-    get isAddedListTableRowsEmpty() { return !this.addedListTableRows || this.addedListTableRows.length < 1; }
+    get isSearchedListTableRowsEmpty() { return !this.searchedListTableRows || this.searchedListTableRows.length === 0; }
+    get isAddedListTableRowsEmpty() { return !this.addedListTableRows || this.addedListTableRows.length === 0; }
 
     handleFormChange(event) {
         const field = event.target.dataset.field;
@@ -158,7 +158,7 @@ export default class Lsta_PartOrderMyPartListAddPartModal extends LightningEleme
         this.isLoading = true;
 
         try {
-            if (!this.addedListTableRows || this.addedListTableRows.length < 1) {
+            if (!this.addedListTableRows || this.addedListTableRows.length === 0) {
                 this.showToast('No parts to add', 'Please search, select and add parts', 'error');
                 return;
             }

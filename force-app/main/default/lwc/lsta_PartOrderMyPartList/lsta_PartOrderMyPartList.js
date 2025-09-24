@@ -7,9 +7,23 @@ import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartCha
 import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
 import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removePartList';
 import removeAllyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeAllyPartListItems';
+import removeMyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeMyPartListItems';
 
 const MENU_MODAL_ACTION_CREATE = 'create';
 const MENU_MODAL_ACTION_EDIT = 'edit';
+
+
+// refresh
+            // const wishlistIndex = this.wishlistIndexById[this.myPartsListItem.Id];
+            // if (wishlistIndex === -1) {
+            //     this.showToast(
+            //         'Add Part',
+            //         `handleAddPartModalSuccess: error on detail.wishlistId : ${detail.wishlistId}`,
+            //         'error'
+            //     );
+            //     return;
+            // };
+            // this.selectListByIndex(wishlistIndex);
 
 export default class Lsta_PartOrderMyPartList extends LightningElement {
 
@@ -57,11 +71,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     // Datatable 출력용
     wishlistItemsDataTableRows = [];
 
-    isDone = true;
-    isDoneSearch = false;
-    isNewPartList = false;
-    isEditMyPartListName = false;
-    isAddPartsInPartList = false;
+    selectedRowIds = [];
 
     isUploadMyPartListFile = false;
     isCloneMyParts = false;
@@ -76,11 +86,9 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     checkPartNumber = {};
     checkQuantity = 0;
 
-    selectedLeftModalBuffer = [];
     partsToCart = [];
 
     isDistributor = false;
-    isSelectObjCode = false;
 
     orderTypeOptions = [
         { label: 'Default Delivery', value: 'Default Delivery' }, // 일반주문
@@ -93,7 +101,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     sitePrefix = '';
 
-    selectedOrderRowKeys = []; // selected rows (by key-field)
 
     get displayNoData() {
         const items = this.myPartsListItem?.WishlistItems;
@@ -127,6 +134,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
                         this.wishlistIndexById[wishlist.Id] = index;
                     }
                 });
+            const index = this.wishlistIndexById[payload.Id];
 
                 this.selectListByIndex(0);
 
@@ -153,7 +161,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
         return {
             id: wishlistItem.Id,
-            salesStatus: wishlistItem.Product2?.Part__r?.isSalesPart__c ? '' : '판매중지',
+            salesStatus: wishlistItem.Product2?.Part__r?.isSalesPart__c ? '' : 'Not for sale',
             partNo: wishlistItem.Product2?.Part__r?.Partnum__c,
             oldPartNumber: wishlistItem.Product2?.Part__r?.OldPartnum__c,
             partName: wishlistItem.Product2?.Part__r?.NameEng__c,
@@ -291,15 +299,51 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     handleClickAddPart(event) {
-        console.log('handleClickAddPart');
         this.showAddPartModal = true;
     }
 
-    handleClickDeletePart(event) {
-            console.log('async handleClickDeletePart');
+    handleRowSelection(event) {
+        this.selectedRowIds = event.detail.selectedRows.map(row => row.id);
+    }
+
+    async handleClickDeletePart(event) {
+
+        if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
+            return;
+        }
+
+        this.isLoading = true;
         try {
-            this.isLoading = true;
-            // 선택 행 검증 → 확인 모달 → 삭제 로직
+            const mapData = {
+                Id: this.selectedRowIds,
+            };
+            const response = await removeMyPartListItems({ mapData });
+            if (response?.result !== 'OK') {
+                const message = response?.message || 'Delete failed.';
+                throw new Error(message);
+            }
+            this.showToast('Success', 'Items deleted.', 'success');
+            
+            if (this.myPartsListItem?.WishlistItems) {
+                this.myPartsListItem.WishlistItems = this.myPartsListItem.WishlistItems.filter(
+                    item => !this.selectedRowIds.includes(item.Id)
+                );
+            }
+            this.selectedRowIds = [];
+
+            const wishlistIndex = this.wishlistIndexById[this.myPartsListItem.Id];
+            if (wishlistIndex === -1) {
+                this.showToast(
+                    'Add Part',
+                    `lsta_PartOrderMyPartList: error finding index. wishlistId : ${detail.wishlistId}`,
+                    'error'
+                );
+                return;
+            };
+            this.selectListByIndex(wishlistIndex);
+
+        } catch (error) {
+            this.showToast('Error', error?.message || 'Unexpected error.', 'error');
         } finally {
             this.isLoading = false;
         }
@@ -383,12 +427,17 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         if (!data) {
             return;
         }
-
         const { wishlistId, payload } = data;
 
-        // wishlist err
-        const wishlistIndex = this.myPartsList.findIndex(w => w.Id === wishlistId);
-        if (wishlistIndex === -1) return;
+        const wishlistIndex = this.wishlistIndexById[wishlistId];
+        if (wishlistIndex === -1) {
+            this.showToast(
+                'Add Part',
+                `handleAddPartModalSuccess: error on detail.wishlistId : ${detail.wishlistId}`,
+                'error'
+            );
+            return;
+        };
         const wishlist = this.myPartsList[wishlistIndex];
 
         const updateWishlistItems = (payload) => {
@@ -413,7 +462,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             });
         };
         updateWishlistItems(payload);
-        // this.myPartsList = [...this.myPartsList];
         this.selectListByIndex(wishlistIndex);
     };
     
