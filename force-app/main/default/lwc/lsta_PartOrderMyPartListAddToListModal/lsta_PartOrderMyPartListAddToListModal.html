@@ -12,5 +12,54 @@
 * TODO
 --> 
 <template>
-    
+    <div class="setProductModal">
+
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading-01" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+        
+                <template if:true={isLoading}>
+                    <lightning-spinner size="small" alternative-text="Loading"></lightning-spinner>
+                </template>
+
+                <div class="slds-modal__header">
+                    <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">Add to Wishlist</h1>
+                    <p id="modal-heading-02">Select the parts and add to your wishlist.</p>
+                </div>
+
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+
+                    <template if:false={displayNoData}>
+                        <lightning-datatable
+                            class="c-list-container"
+                            key-field="id"
+                            data={listWishlistDataTableRows}
+                            columns={columns}
+                            max-row-selection="100"
+                            selected-rows={selectedRowIds}
+                            onrowselection={handleRowSelection}>
+                        </lightning-datatable>
+                    </template>
+                    
+                    <div style="margin-top:15px; text-align:right">
+                        <lightning-button
+                            class="button-spacing"
+                            variant="neutral"
+                            label="Cancel"
+                            aria-label="Cancel and close"
+                            onclick={handleClickClose}>
+                        </lightning-button>
+                        <lightning-button
+                            class="button-spacing"
+                            variant="brand"
+                            label="Save"
+                            onclick={handleClickSave}>
+                        </lightning-button>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </div>
 </template>

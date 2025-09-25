@@ -134,10 +134,11 @@
                         </div>
                     </template>
 
-                    <!-- 선택결과 및 수량 테이블 -->
                     <div style="border-width: 2px 0px 0px 0px;border-style: solid;padding-top: 20px;"></div>
-                    <h1>Selectd Parts</h1>
+                    
+                    <!-- 선택결과 및 수량 테이블 -->
                     <template if:false={isAddedListTableRowsEmpty}>
+                        <h1>Selectd Parts</h1>
                         <div class="slds-m-top_medium">
                             <table class="slds-table slds-table_cell-buffer slds-table_bordered" id="table-selected-parts" data-id="tableSelectedParts">
                                 <thead>

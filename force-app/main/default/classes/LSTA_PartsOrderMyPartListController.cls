@@ -48,8 +48,8 @@ public without sharing class LSTA_PartsOrderMyPartListController {
 
                 List<Wishlist> newWishlists = new List<Wishlist>();
                 List<String> initNames = new List<String>{
-                    System.Label.Frequent_Orders,
-                    System.Label.Filters
+                    'Frequent Orders',
+                    'Filters'
                 };
                 for (String initMyListName : initNames) {
                     Wishlist newWishlist = new Wishlist(
@@ -359,6 +359,7 @@ public without sharing class LSTA_PartsOrderMyPartListController {
                     SELECT
                         Id,
                         Name,
+                        WishlistId,
                         Product2Id,
                         Product2.Name,
                         Product2.Part__r.Partnum__c,
@@ -500,11 +501,17 @@ public without sharing class LSTA_PartsOrderMyPartListController {
                     clsMyPartsListItem.WishlistId = wishlistMap.get(listElement.get(0).trim()).Id;
                 } else if (String.isBlank(listElement.get(0).trim())) { // 입력을 안했을 때
                     clsMyPartsListItem.WishlistId = myPartsListId;
+
+// 없는걸 입력했을 때 리스트는 만들어주지만 아이템은 안넣어준다?                    
                 } else {
                     continue;
                 }
                 // 자재번호나 수량 입력이 없을 때 넘기기
                 if(String.isBlank(listElement.get(1).trim()) || String.isBlank(listElement.get(2).trim())) continue;
+
+// listPartNumber를 wishlist별로 관리해야함
+// return도 바꿔야함 일단스킵
+
                 // 중복된 자재번호가 있을 때 넘기기
                 if(listPartNumber.contains(listElement.get(1).trim())) continue;
 
@@ -546,6 +553,43 @@ public without sharing class LSTA_PartsOrderMyPartListController {
             }
             System.debug('## listMyPartsListItemToSave : ' + listMyPartsListItemToSave);
             Upsert listMyPartsListItemToSave;
+
+            
+            // payload : evander
+            Set<Id> upsertedIds = new Set<Id>();
+            for (WishlistItem wi : listMyPartsListItemToSave) {
+                upsertedIds.add(wi.Id);
+            }
+            listMyPartsListItemToSave = new List<WishlistItem>();
+            if (!upsertedIds.isEmpty()) {
+                listMyPartsListItemToSave = [
+                    SELECT
+                        Id,
+                        Name,
+                        WishlistId,
+                        Product2Id,
+                        Product2.Name,
+                        Product2.Part__r.Partnum__c,
+                        Product2.Part__r.OldPartnum__c,
+                        Product2.fm_Model_Names__c,
+                        isCompSet__c,
+                        Remark__c,
+                        Product2.Part__r.NameEng__c,
+                        Product2.Part__r.NameKor__c,
+                        Quantity__c,
+                        Product2.REF__c,
+                        Product2.PJUNIT__c,
+                        Product2.Part__r.Bigo__c,
+                        Product2.Part__r.isSalesPart__c,
+                        CreatedDate,
+                        LastOrderedDate__c,
+                        LastQuantity__c
+                    FROM WishlistItem
+                    WHERE Id IN :upsertedIds
+                ];
+            }
+
+            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.OK;
             clsPartsOrderResponseWrapper.payload = listMyPartsListItemToSave;
         } catch(Exception Ex) {
             System.debug('## partFileMyParts ## Ex : ' + Ex);
@@ -683,6 +727,43 @@ public without sharing class LSTA_PartsOrderMyPartListController {
             if(type.equals('move') == true) {
                 Delete listMyPartsListItem;
             }
+
+
+// payload: evander
+            Set<Id> upsertedIds = new Set<Id>();
+            for (WishlistItem wi : listMyPartsListItemToSave) {
+                upsertedIds.add(wi.Id);
+            }
+            listMyPartsListItemToSave = new List<WishlistItem>();
+            if (!upsertedIds.isEmpty()) {
+                listMyPartsListItemToSave = [
+                    SELECT
+                        Id,
+                        Name,
+                        WishlistId,
+                        Product2Id,
+                        Product2.Name,
+                        Product2.Part__r.Partnum__c,
+                        Product2.Part__r.OldPartnum__c,
+                        Product2.fm_Model_Names__c,
+                        isCompSet__c,
+                        Remark__c,
+                        Product2.Part__r.NameEng__c,
+                        Product2.Part__r.NameKor__c,
+                        Quantity__c,
+                        Product2.REF__c,
+                        Product2.PJUNIT__c,
+                        Product2.Part__r.Bigo__c,
+                        Product2.Part__r.isSalesPart__c,
+                        CreatedDate,
+                        LastOrderedDate__c,
+                        LastQuantity__c
+                    FROM WishlistItem
+                    WHERE Id IN :upsertedIds
+                ];
+            }
+            
+            clsPartsOrderResponseWrapper.payload = listMyPartsListItemtoSave;
             clsPartsOrderResponseWrapper.payload = listMyPartsListItemtoSave;
 
         } catch(Exception Ex) {            

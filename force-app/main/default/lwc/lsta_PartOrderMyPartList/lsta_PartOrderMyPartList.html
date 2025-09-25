@@ -108,7 +108,7 @@ toFormatDate 북미포맷
                         variant="brand-outline"
                         icon-name="utility:copy"
                         icon-position="right"
-                        onclick={handleClickAddToWishlist}>
+                        onclick={handleClickAddToList}>
                     </lightning-button>
 
                     <lightning-button
@@ -186,8 +186,12 @@ toFormatDate 북미포맷
                 onsuccess={handleAddPartModalSuccess}
             ></c-lsta_-part-order-my-part-list-add-part-modal>
         </template>
-        <template if:true={showAddToWishlistModal}>
+        <template if:true={showAddToListModal}>
             <c-lsta_-part-order-my-part-list-add-to-list-modal
+                onclose={handleAddToListModalClose}
+                onsuccess={handleAddToListModalSuccess}
+                selected-wishlist-items={selectedItems}
+                list-wishlist={listWishlist}
             ></c-lsta_-part-order-my-part-list-add-to-list-modal>
         </template>
     </div>

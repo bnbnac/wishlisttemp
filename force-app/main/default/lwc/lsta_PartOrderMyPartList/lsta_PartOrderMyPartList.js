@@ -26,6 +26,7 @@ const MENU_MODAL_ACTION_EDIT = 'edit';
             // };
             // this.selectListByIndex(wishlistIndex);
 // getwishlistid
+// method이름정리 순서정리
 
 export default class Lsta_PartOrderMyPartList extends LightningElement {
 
@@ -48,16 +49,12 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     showCreateListModal;
     showEditListModal;
     showAddPartModal;
-    showAddToWishlistModal;
+    showAddToListModal;
     showUploadSection;
 
-
-    //
     isLoading;
     showMenuModal = false;
     menuModalAction;
-    //
-
 
     partsList = [];
     targetList = [];
@@ -74,6 +71,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     wishlistItemsDataTableRows = [];
 
     selectedRowIds = [];
+    selectedItems = [];
 
     isUploadMyPartListFile = false;
     isCloneMyParts = false;
@@ -214,6 +212,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     selectListByIndex(wishlistIndex) {
         this.myPartsListItem = this.myPartsList[wishlistIndex];
+        this.selectedRowIds = [];
         this.wishlistItemsDataTableRows = this.formatWishlistItemsForDataTable();
     }
 
@@ -311,6 +310,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     async handleClickDeletePart(event) {
 
         if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
+            this.showToast('Error', 'Please select parts to delete.', 'error');
             return;
         }
 
@@ -378,10 +378,10 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             const payload = response?.payload ?? {};
             const payloadItems = Array.isArray(payload) ? payload : [];
 
+            console.log('handleUploadFinished');
+            console.log(payload);
 
-            // payload 재쿼리 remark같은거. 그리고 evandertest 안됨
-
-
+            // 어차피 이게 돌일이 없음 apex에서 한개만 보내줘서
             // 1) payload를 WishlistId로 그룹핑
             const groupedByWishlistId = new Map();
             for (const payloadItem of payloadItems) {
@@ -472,14 +472,60 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         document.body.removeChild(link);
     }
 
-    handleClickAddToWishlist(event) {
-            console.log('async handleClickAddToWishlist');
-        try {
-            this.isLoading = true;
-            // 위시리스트 추가 로직
-        } finally {
-            this.isLoading = false;
+    handleClickAddToList() {
+        if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
+            this.showToast('Error', 'Please select parts to copy.', 'error');
+            return;
         }
+
+        const items = this.myPartsListItem?.WishlistItems || [];
+        const selectedItems = items.filter(item =>
+            this.selectedRowIds.includes(item.Id)
+        );
+        
+        const listWishlist = (this.myPartsList || []).map(item => ({
+            Id: item.Id,
+            Name: item.Name
+        }));
+        
+        this.listWishlist = listWishlist;
+        this.selectedItems = selectedItems;
+        this.showAddToListModal = true;
+    }
+    
+    handleAddToListModalSuccess(event) {
+        const data = event.detail;
+        if (!data) {
+            return;
+        }
+        const payload = data.payload;
+
+        payload.forEach(item => {
+            const wishlistId = item.WishlistId;
+            const targetWishlist = this.myPartsList.find(w => w.Id === wishlistId);
+
+            if (!targetWishlist) {
+                return;
+            }
+
+            if (!Array.isArray(targetWishlist.WishlistItems)) {
+                targetWishlist.WishlistItems = [];
+            }
+
+            const existing = targetWishlist.WishlistItems.find(wi => wi.Id === item.Id);
+
+            if (existing) {
+                existing.Quantity__c = item.Quantity__c;
+            } else {
+                targetWishlist.WishlistItems.push({ ...item });
+            }
+        });
+
+        this.selectListByIndex(this.wishlistIndexById[this.myPartsListItem.Id]);
+    }
+
+    handleAddToListModalClose() {
+        this.showAddToListModal = false;
     }
 
     handleClickPrint(event) {
