@@ -8,6 +8,7 @@ import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.
 import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removePartList';
 import removeAllyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeAllyPartListItems';
 import removeMyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeMyPartListItems';
+import parseMyPartsItemCSVFile from '@salesforce/apex/LSTA_PartsOrderMyPartListController.parseMyPartsItemCSVFile';
 
 const MENU_MODAL_ACTION_CREATE = 'create';
 const MENU_MODAL_ACTION_EDIT = 'edit';
@@ -24,6 +25,7 @@ const MENU_MODAL_ACTION_EDIT = 'edit';
             //     return;
             // };
             // this.selectListByIndex(wishlistIndex);
+// getwishlistid
 
 export default class Lsta_PartOrderMyPartList extends LightningElement {
 
@@ -134,7 +136,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
                         this.wishlistIndexById[wishlist.Id] = index;
                     }
                 });
-            const index = this.wishlistIndexById[payload.Id];
+                const index = this.wishlistIndexById[payload.Id];
 
                 this.selectListByIndex(0);
 
@@ -350,9 +352,109 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     handleClickUploadCsv(event) {
-            console.log('handleClickUploadCsv(event');
-        // 실제 업로드는 lightning-file-upload를 사용 권장
-        // 여기서는 업로드 섹션 열기/모달 오픈 트리거
+        this.showUploadSection = !this.showUploadSection;
+    }
+
+    async handleUploadFinished(event) {
+        const uploadedFiles = event.detail.files;
+        this.isLoading = true;
+
+        const wishlistId = this.myPartsListItem.Id;
+        const wishlistIndex = this.wishlistIndexById[wishlistId];
+        try {
+            
+            const mapData = {
+                myPartsListId: wishlistId,
+                contentDocumentId: uploadedFiles[0].documentId,
+            };
+            const response = await parseMyPartsItemCSVFile({ mapData });
+
+            if (response?.result !== 'OK') {
+                const message = response?.message || 'Save failed.';
+                throw new Error(message);
+            }
+            this.showToast('Success', 'Wishlist saved.', 'success');
+            
+            const payload = response?.payload ?? {};
+            const payloadItems = Array.isArray(payload) ? payload : [];
+
+
+            // payload 재쿼리 remark같은거. 그리고 evandertest 안됨
+
+
+            // 1) payload를 WishlistId로 그룹핑
+            const groupedByWishlistId = new Map();
+            for (const payloadItem of payloadItems) {
+                if (!payloadItem || typeof payloadItem.Id !== "string") continue;
+
+                const targetWishlistId = payloadItem.WishlistId;
+                if (typeof targetWishlistId !== "string" || !targetWishlistId) continue; // WishlistId 없는 항목은 스킵
+
+                if (!groupedByWishlistId.has(targetWishlistId)) {
+                    groupedByWishlistId.set(targetWishlistId, []);
+                }
+                groupedByWishlistId.get(targetWishlistId).push(payloadItem);
+            }
+
+            // 2) 그룹별로 해당 위시리스트를 찾아서 머지 수행
+            for (const [targetWishlistId, itemsForWishlist] of groupedByWishlistId.entries()) {
+                // 해당 위시리스트 index 찾기 (맵 → 없으면 findIndex)
+                let wishlistIndex =
+                    typeof this.wishlistIndexById[targetWishlistId] === "number"
+                        ? this.wishlistIndexById[targetWishlistId]
+                        : this.myPartsList.findIndex(function (wishlist) {
+                              return wishlist && wishlist.Id === targetWishlistId;
+                          });
+
+                if (wishlistIndex < 0) {
+                    console.warn("Wishlist not found for WishlistId:", targetWishlistId);
+                    continue;
+                }
+
+                const currentWishlist = this.myPartsList[wishlistIndex] || {};
+                const currentWishlistItems = Array.isArray(currentWishlist.WishlistItems)
+                    ? currentWishlist.WishlistItems
+                    : [];
+
+                const mergedMap = new Map(currentWishlistItems.map(function (item) {
+                    return [item.Id, item];
+                }));
+
+                for (const payloadItem of itemsForWishlist) {
+                    if (!payloadItem || typeof payloadItem.Id !== "string") continue;
+
+                    if (mergedMap.has(payloadItem.Id)) {
+                        const existingItem = mergedMap.get(payloadItem.Id);
+                        mergedMap.set(payloadItem.Id, {
+                            ...existingItem,
+                            ...payloadItem,
+                            WishlistId: targetWishlistId
+                        });
+                    } else {
+                        mergedMap.set(payloadItem.Id, {
+                            ...payloadItem,
+                            WishlistId: targetWishlistId
+                        });
+                    }
+                }
+
+                const updatedWishlistItems = Array.from(mergedMap.values());
+
+                // 결과 반영
+                this.myPartsList[wishlistIndex] = {
+                    ...currentWishlist,
+                    WishlistItems: updatedWishlistItems,
+                    WishlistProductCount: updatedWishlistItems.length
+                };
+            }
+
+            this.selectListByIndex(wishlistIndex);
+
+        } catch (error) {
+            this.showToast('Error', error?.message || 'Unexpected error.', 'error');
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     handleClickDownloadCsvForm(event) {
@@ -401,10 +503,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         this.showMenuModal = false;
     }
 
-    handleAddPartModalClose() {
-        this.showAddPartModal = false;
-    }
-
     handleMenuModalSuccess(event) {
         const data = event.detail;
         if (!data) {
@@ -430,6 +528,10 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
                 console.warn('리스트에서 해당 Id를 찾지 못했습니다:', payload.Id);
             }
         }
+    }
+
+    handleAddPartModalClose() {
+        this.showAddPartModal = false;
     }
 
     handleAddPartModalSuccess(event) {

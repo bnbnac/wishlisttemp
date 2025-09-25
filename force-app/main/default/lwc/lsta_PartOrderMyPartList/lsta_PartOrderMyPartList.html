@@ -141,9 +141,9 @@ toFormatDate 북미포맷
                 <lightning-file-upload
                     label=""
                     name="fileUploader"
-                    accept="[.csv]"
+                    accept=".csv"
                     class="custom-file-upload"
-                >
+                    onuploadfinished={handleUploadFinished}>
                 </lightning-file-upload>
             </div>
         </template>
