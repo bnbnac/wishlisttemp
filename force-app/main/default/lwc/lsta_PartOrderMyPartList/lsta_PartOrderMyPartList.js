@@ -35,6 +35,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         { label: 'Part No', fieldName: 'partNo', initialWidth: 120 },
         { label: 'Old Part Number', fieldName: 'oldPartNumber', initialWidth: 150 },
         { label: 'Part Name', fieldName: 'partName', initialWidth: 200 },
+        { label: 'Stock', fieldName: 'stock', initialWidth: 105 },
         { label: 'Qty', fieldName: 'qty', type: 'number', initialWidth: 105 },
         { label: 'Unit Price', fieldName: 'unitPrice', type: 'currency', initialWidth: 135 },
         { label: 'Billed Amount', fieldName: 'billedAmount', type: 'currency', initialWidth: 150 },
@@ -51,6 +52,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     showAddPartModal;
     showAddToListModal;
     showUploadSection;
+    showCompSetModal;
 
     isLoading;
     showMenuModal = false;
@@ -69,6 +71,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     myPartsListItem = {};
     // Datatable 출력용
     wishlistItemsDataTableRows = [];
+    // 재고
+    stockByWishlistItemId = [];
 
     selectedRowIds = [];
     selectedItems = [];
@@ -86,6 +90,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     checkPartNumber = {};
     checkQuantity = 0;
 
+    selectedLeftModalBuffer = [];
     partsToCart = [];
 
     isDistributor = false;
@@ -107,8 +112,13 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         return !items || items.length === 0;
     }
 
+    get trueVar() {
+        return true;
+    }
+
     async connectedCallback() {
         await this.queryMyPartList();
+        await this.queryStock();
     }
 
     async queryMyPartList() {
@@ -118,7 +128,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             if (result !== 'OK') {
                 this.myPartsList = [];
                 this.myPartsListItem = {};
-                this.showToast('조회 실패', message || '내 파트 리스트 조회에 실패했습니다.', 'error');
+                this.showToast('Error', message || 'Error getting wishlist', 'error');
                 return;
             }
             console.log('queryMyPartList');
@@ -145,6 +155,35 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             console.error(error);
             this.myPartsList = [];
             this.myPartsListItem = {};
+            this.showToast('Error', error.body?.message || error.message || 'Error getting wishlist', 'error');
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    async queryStock() {
+        this.isLoading = true;
+        try {
+            // const { result, payload } = await getStock();
+            // if (result !== 'OK') {
+            //     this.myPartsList = [];
+            //     this.myPartsListItem = {};
+            //     this.showToast('Error', message || 'Error getting stock', 'error');
+            //     return;
+            // }
+            console.log('queryStock');
+            // console.log(payload);
+
+            this.stockByWishlistItemId;
+
+
+            this.selectListByIndex(this.wishlistIndexById[this.myPartsListItem.Id]);
+
+
+        } catch (error) {
+            console.error(error);
+            this.myPartsList = [];
+            this.myPartsListItem = {};
             this.showToast('오류', error.body?.message || error.message || '내 파트 리스트 조회에 실패했습니다.', 'error');
         } finally {
             this.isLoading = false;
@@ -165,6 +204,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             partNo: wishlistItem.Product2?.Part__r?.Partnum__c,
             oldPartNumber: wishlistItem.Product2?.Part__r?.OldPartnum__c,
             partName: wishlistItem.Product2?.Part__r?.NameEng__c,
+            stock: !this.stockByWishlistItemId[wishlistItem.Product2?.Part__r?.Partnum__c] ? 'is Loading...' : this.stockByWishlistItemId[wishlistItem.Product2?.Part__r?.Partnum__c],
             qty: wishlistItem.Quantity__c,
             unitPrice: unitPrice,
             billedAmount: this.isDistributor
@@ -528,21 +568,82 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         this.showAddToListModal = false;
     }
 
-    handleClickPrint(event) {
-            console.log('handleClickPrint(event');
-        // 인쇄 전용 레이아웃 팝업 또는 window.print()
-    }
-
-    // 서버를 건들고오자
     handleClickAddToCart(event) {
-            console.log('async handleClickAddToCart');
-        try {
-            this.isLoading = true;
-            // 장바구니 추가 로직
-        } finally {
-            this.isLoading = false;
+        if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
+            this.showToast('Error', 'Please select parts to copy.', 'error');
+            return;
+        }
+
+        const items = this.myPartsListItem?.WishlistItems || [];
+        const selectedItems = items.filter(item =>
+            this.selectedRowIds.includes(item.Id)
+        );
+        this.selectedItems = selectedItems;
+        const selectedBuffer = Array.isArray(this.selectedItems) ? this.selectedItems : [];
+        this.partsToCart = selectedBuffer.filter((item) => item.isCompSet__c === false);
+        this.selectedLeftModalBuffer = selectedBuffer.filter((item) => item.isCompSet__c === true);
+
+        if (this.selectedLeftModalBuffer.length > 0) {
+            const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
+            this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
+            this.checkQuantity = removedElement.Quantity__c;
+            this.selectedLeftModalBuffer = remaining;
+            this.showCompSetModal = true;
+        } else {
+            this.addToCart();
         }
     }
+
+    handleAddPartCompSetModal(event) {
+        const partNumbers =
+            Array.isArray(event?.detail?.partNumbers)
+                ? event.detail.partNumbers.filter(Boolean)
+                : [];
+
+        if (partNumbers.length === 0) {
+            this.showToast('Error', 'No parts selected in modal.', 'error');
+            this.continueCompSetFlow();
+            return;
+        }
+
+        // 모달에서 선택된 파트들을 장바구니 후보에 합치기
+        const partsFromModal = partNumbers.map((partNumber) => ({
+            PartNumber: partNumber,
+            Quantity__c: this.checkQuantity,
+            isCompSet__c: false
+        }));
+        this.partsToCart = [...this.partsToCart, ...partsFromModal];
+
+        // 다음 컴셋 아이템 진행 or 장바구니 반영
+        this.continueCompSetFlow();
+    }
+
+    handleCompSetModalClose() {
+        // 선택 없이 닫은 경우: 그냥 다음으로 진행
+        this.continueCompSetFlow();
+    }
+
+    continueCompSetFlow() {
+        if (this.selectedLeftModalBuffer.length > 0) {
+            const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
+            this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
+            this.checkQuantity = removedElement.Quantity__c;
+            this.selectedLeftModalBuffer = remaining;
+            this.showCompSetModal = true;      // 다음 컴셋 모달 이어서 표시
+        } else {
+            this.showCompSetModal = false;     // 더 이상 모달 없음
+            this.addToCart();                  // partsToCart 기반으로 실제 장바구니 반영
+        }
+    }
+
+    addToCart() {
+        // TODO: this.partsToCart 를 기준으로 장바구니 반영
+        console.log('addToCart()', this.partsToCart);
+    }
+
+    // handleCompSetModalClose() {
+    //     this.showCompSetModal = false;
+    // }
 
     handleMenuModalClose() {
         this.menuModalAction = null;
@@ -622,6 +723,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         updateWishlistItems(payload);
         this.selectListByIndex(wishlistIndex);
     };
+
+    handleClickPrint(event) {
+        console.log('handleClickPrint(event');
+        // 인쇄 전용 레이아웃 팝업 또는 window.print()
+    }
     
     showToast(title, message, variant) {
         this.dispatchEvent(

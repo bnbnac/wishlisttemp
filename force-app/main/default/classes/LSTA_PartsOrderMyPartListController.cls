@@ -801,4 +801,26 @@ public without sharing class LSTA_PartsOrderMyPartListController {
         return user.Profile.Name == 'LSTA Dealer';
     }
 
+    // evander
+    // 리스트에 뭔가 추가될때?
+    // + 재고를 갱신해야할때?
+    @AuraEnabled
+    public static PartsOrderResponseWrapper getStockInformation(Map<String, Object> mapData) {
+        PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
+        try {
+            String myParstListId = (String) mapData.get('myParstList');
+            List<Object> listMyPartListItems = (List<Object>) mapData.get('myPartListItems');
+            List<WishlistItem> listWishlistItem = new List<WishlistItem>();
+            for(Object objMyPartListItem : listMyPartListItems) {
+                WishlistItem clsWishlistItem = (WishlistItem) System.JSON.deserialize(Json.serialize(objMyPartListItem), WishlistItem.class);                
+                listWishlistItem.add(clsWishlistItem);
+            }
+            Update listWishlistItem;
+            clsPartsOrderResponseWrapper.payload = listWishlistItem;
+        } catch(Exception Ex) {
+            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
+            clsPartsOrderResponseWrapper.message += Ex.getStackTraceString() + ',' + Ex.getMessage();
+        }   
+        return clsPartsOrderResponseWrapper;
+    }
 }
