@@ -808,15 +808,14 @@ public without sharing class LSTA_PartsOrderMyPartListController {
     public static PartsOrderResponseWrapper getStockInformation(Map<String, Object> mapData) {
         PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
         try {
-            String myParstListId = (String) mapData.get('myParstList');
-            List<Object> listMyPartListItems = (List<Object>) mapData.get('myPartListItems');
-            List<WishlistItem> listWishlistItem = new List<WishlistItem>();
-            for(Object objMyPartListItem : listMyPartListItems) {
-                WishlistItem clsWishlistItem = (WishlistItem) System.JSON.deserialize(Json.serialize(objMyPartListItem), WishlistItem.class);                
-                listWishlistItem.add(clsWishlistItem);
-            }
-            Update listWishlistItem;
-            clsPartsOrderResponseWrapper.payload = listWishlistItem;
+            List<String> partNumbers = (List<String>) JSON.deserialize(
+                JSON.serialize(mapData.get('partNumbers')),
+                List<String>.class
+            );
+            Map<String, Integer> resultMap = LSTA_PartOrderCartWorkerController.getStockLSTA(partNumbers);
+
+            clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.OK;
+            clsPartsOrderResponseWrapper.payload = resultMap;
         } catch(Exception Ex) {
             clsPartsOrderResponseWrapper.result = PartsOrderResponseWrapper.NOK;
             clsPartsOrderResponseWrapper.message += Ex.getStackTraceString() + ',' + Ex.getMessage();

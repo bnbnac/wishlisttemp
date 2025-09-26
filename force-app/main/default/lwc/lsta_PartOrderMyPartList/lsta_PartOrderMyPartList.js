@@ -9,6 +9,7 @@ import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController
 import removeAllyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeAllyPartListItems';
 import removeMyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeMyPartListItems';
 import parseMyPartsItemCSVFile from '@salesforce/apex/LSTA_PartsOrderMyPartListController.parseMyPartsItemCSVFile';
+import getStockInformation from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getStockInformation';
 
 const MENU_MODAL_ACTION_CREATE = 'create';
 const MENU_MODAL_ACTION_EDIT = 'edit';
@@ -72,7 +73,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     // Datatable 출력용
     wishlistItemsDataTableRows = [];
     // 재고
-    stockByWishlistItemId = [];
+    stockByPartNumber = {};
+    allPartNumbersToQueryStock = [];
 
     selectedRowIds = [];
     selectedItems = [];
@@ -161,24 +163,27 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    async queryStock() {
+    // stockByPartNumber 에 없는 partNumbers 재고를 쿼리
+    // 전체쿼리해도 if한번이라 문제 없을거같아 고민이 필요한 지점 -> 부품추가 등을 고려
+    async queryStock(partNumbers) {
         this.isLoading = true;
         try {
-            // const { result, payload } = await getStock();
-            // if (result !== 'OK') {
-            //     this.myPartsList = [];
-            //     this.myPartsListItem = {};
-            //     this.showToast('Error', message || 'Error getting stock', 'error');
-            //     return;
-            // }
+            const mapData = {
+                partNumbers: [ '40007474', '20122005', '40029442' ], // 리스트로 다 때려넣기? // 필요한것만 넣기?
+            };
+            const response = await getStockInformation({ mapData });
+            if (response?.result !== 'OK') {
+                const message = response?.message || 'failed to query stock';
+                throw new Error(message);
+            }
+            
+            const payload = response?.payload ?? {};
+
             console.log('queryStock');
-            // console.log(payload);
-
-            this.stockByWishlistItemId;
-
+            console.log(payload);
+            this.stockByPartNumber = payload; // 업기 
 
             this.selectListByIndex(this.wishlistIndexById[this.myPartsListItem.Id]);
-
 
         } catch (error) {
             console.error(error);
@@ -204,7 +209,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             partNo: wishlistItem.Product2?.Part__r?.Partnum__c,
             oldPartNumber: wishlistItem.Product2?.Part__r?.OldPartnum__c,
             partName: wishlistItem.Product2?.Part__r?.NameEng__c,
-            stock: !this.stockByWishlistItemId[wishlistItem.Product2?.Part__r?.Partnum__c] ? 'is Loading...' : this.stockByWishlistItemId[wishlistItem.Product2?.Part__r?.Partnum__c],
+            stock: !this.stockByPartNumber[wishlistItem.Product2?.Part__r?.Partnum__c] ? 'is Loading...' : this.stockByPartNumber[wishlistItem.Product2?.Part__r?.Partnum__c],
             qty: wishlistItem.Quantity__c,
             unitPrice: unitPrice,
             billedAmount: this.isDistributor
@@ -329,7 +334,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
                 });
             }
 
-            // stack?
             this.selectListByIndex(0);
 
         } catch (error) {
