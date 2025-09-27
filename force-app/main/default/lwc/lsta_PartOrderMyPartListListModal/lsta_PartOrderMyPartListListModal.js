@@ -111,8 +111,6 @@ export default class Lsta_PartOrderMyPartListListModal extends LightningElement 
             this.showToast('Success', 'Wishlist saved.', 'success');
             
             const payload = response?.payload ?? {};
-            console.log('payload');
-            console.log(payload);
             this.dispatchEvent(new CustomEvent('success', {
                 detail: {
                     action: this.action,

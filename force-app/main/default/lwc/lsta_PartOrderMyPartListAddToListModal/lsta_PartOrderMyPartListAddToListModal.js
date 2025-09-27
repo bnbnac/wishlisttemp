@@ -60,12 +60,6 @@ export default class Lsta_PartOrderMyPartListAddToListModal extends LightningEle
             }
             this.showToast('Success', 'Items Added.', 'success');
 
-            console.log(response);
-
-            console.log('response.payload');
-            console.log(response.payload);
-            // 모든event에대해, mypartlist를 제조해서 넘기는건 어떨까?
-
             this.dispatchEvent(new CustomEvent('success', {
                 detail: {
                     payload: response.payload

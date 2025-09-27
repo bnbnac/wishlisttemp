@@ -56,6 +56,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     showCompSetModal;
 
     isLoading;
+    isStockLoading;
     showMenuModal = false;
     menuModalAction;
 
@@ -120,9 +121,10 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     async connectedCallback() {
         await this.queryMyPartList();
-        await this.queryStock();
+        this.selectListByIndex(0);
     }
 
+    // 전체쿼리
     async queryMyPartList() {
         this.isLoading = true;
         try {
@@ -140,16 +142,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             this.pricebookEntryMap = payload.mapPricebookEntry ?? {};
 
             if (this.myPartsList.length > 0) {
-
                 this.myPartsList.forEach((wishlist, index) => {
                     if (wishlist?.Id) {
                         this.wishlistIndexById[wishlist.Id] = index;
                     }
                 });
-                const index = this.wishlistIndexById[payload.Id];
-
-                this.selectListByIndex(0);
-
             } else {
                 this.myPartsListItem = {};
             }
@@ -163,14 +160,14 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    // stockByPartNumber 에 없는 partNumbers 재고를 쿼리
-    // 전체쿼리해도 if한번이라 문제 없을거같아 고민이 필요한 지점 -> 부품추가 등을 고려
+    // 재고쿼리후 재고맵 this.stockByPartNumber에 upsert
+    // 쿼리할 part number 리스트. Product2.Part__r.Partnum__c
     async queryStock(partNumbers) {
-        this.isLoading = true;
         try {
-            const mapData = {
-                partNumbers: [ '40007474', '20122005', '40029442' ], // 리스트로 다 때려넣기? // 필요한것만 넣기?
-            };
+            const mapData = { partNumbers };
+
+            console.log('queryStock');
+            // not found와 0을 구별 요청할 수 있나?
             const response = await getStockInformation({ mapData });
             if (response?.result !== 'OK') {
                 const message = response?.message || 'failed to query stock';
@@ -178,23 +175,78 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
             }
             
             const payload = response?.payload ?? {};
+            this.stockByPartNumber = {
+                ...this.stockByPartNumber, 
+                ...payload
+            };
 
-            console.log('queryStock');
-            console.log(payload);
-            this.stockByPartNumber = payload; // 업기 
-
-            this.selectListByIndex(this.wishlistIndexById[this.myPartsListItem.Id]);
-
+            this.wishlistItemsDataTableRows = this.formatWishlistItemsForDataTable();
         } catch (error) {
             console.error(error);
             this.myPartsList = [];
             this.myPartsListItem = {};
             this.showToast('오류', error.body?.message || error.message || '내 파트 리스트 조회에 실패했습니다.', 'error');
-        } finally {
-            this.isLoading = false;
         }
     }
 
+    // index번째 리스트 선택 -> 이 선택을 바깥으로 빼자
+    // 이때 현재리스트의 리스트의 재고를 쿼리한다
+    async selectListByIndex(wishlistIndex) {
+        console.log('selectListByIndex');
+        this.isStockLoading = true;
+        const listChanged = !this.isSelectedCurrentList(wishlistIndex);
+        if (listChanged) {
+            this.partNumbers = [];
+            this.stockByPartNumber = {};
+        } 
+
+        this.myPartsListItem = this.myPartsList[wishlistIndex];
+        this.selectedRowIds = [];
+        this.wishlistItemsDataTableRows = this.formatWishlistItemsForDataTable();
+
+        // 이미 index번째 리스트에 있었던 경우, this.partNumbers에 없던 것들만 쿼리해서 붙인다
+        const newlyAddedPartNumbers = this.mergePartNumbersAndExtractNew(this.myPartsListItem?.WishlistItems);
+        const targetPartNumbers = listChanged ? this.partNumbers : newlyAddedPartNumbers;
+
+        if (Array.isArray(targetPartNumbers) && targetPartNumbers.length > 0) {
+            try {
+                await this.queryStock(targetPartNumbers, wishlistIndex);
+            } catch (error) {
+                console.error("queryStock failed:", error);
+            } finally {
+                this.isStockLoading = false;
+                // this.selectListByIndex(wishlistIndex);
+            }
+        }
+        this.isStockLoading = false;
+    }
+
+    isSelectedCurrentList(wishlistIndex) {
+        return wishlistIndex === this.wishlistIndexById[this.myPartsListItem.Id];
+    }
+    
+    mergePartNumbersAndExtractNew(wishlistItems) {
+        const currentPartNumbers = Array.isArray(this.partNumbers) ? this.partNumbers : [];
+        const uniqueSet = new Set(currentPartNumbers);
+        const newlyAddedPartNumbers = [];
+
+        for (const wishlistItem of wishlistItems ?? []) {
+            const partNumber = wishlistItem?.Product2?.Part__r?.Partnum__c ?? null;
+
+            if (typeof partNumber === "string") {
+                const trimmed = partNumber.trim();
+                if (trimmed.length > 0 && !uniqueSet.has(trimmed)) {
+                    uniqueSet.add(trimmed);
+                    newlyAddedPartNumbers.push(trimmed);
+                }
+            }
+        }
+
+        this.partNumbers = [...uniqueSet];
+        return newlyAddedPartNumbers;
+    }
+
+    // datatable에 넣기위한 포맷
     formatWishlistItemForDataTable(wishlistItem) {
         if (!wishlistItem) {
             return null;
@@ -203,13 +255,17 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         const unitPrice = this.pricebookEntryMap?.[wishlistItem.Product2Id]?.UnitPrice ?? 0;
         const vatIncludedUnitPrice = Math.round(unitPrice * 1.1);
 
+        const stock = this.isStockLoading
+            ? (this.stockByPartNumber[wishlistItem.Product2?.Part__r?.Partnum__c] ?? "is Loading...")
+            : (this.stockByPartNumber[wishlistItem.Product2?.Part__r?.Partnum__c] ?? 0);
+
         return {
             id: wishlistItem.Id,
             salesStatus: wishlistItem.Product2?.Part__r?.isSalesPart__c ? '' : 'Not for sale',
             partNo: wishlistItem.Product2?.Part__r?.Partnum__c,
             oldPartNumber: wishlistItem.Product2?.Part__r?.OldPartnum__c,
             partName: wishlistItem.Product2?.Part__r?.NameEng__c,
-            stock: !this.stockByPartNumber[wishlistItem.Product2?.Part__r?.Partnum__c] ? 'is Loading...' : this.stockByPartNumber[wishlistItem.Product2?.Part__r?.Partnum__c],
+            stock: stock,
             qty: wishlistItem.Quantity__c,
             unitPrice: unitPrice,
             billedAmount: this.isDistributor
@@ -250,17 +306,13 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
+    // 리스트 선택
     handleListSelect(event) {
         const wishlistId = event.detail.value;
         this.selectListByIndex(this.wishlistIndexById[wishlistId]);
     }
 
-    selectListByIndex(wishlistIndex) {
-        this.myPartsListItem = this.myPartsList[wishlistIndex];
-        this.selectedRowIds = [];
-        this.wishlistItemsDataTableRows = this.formatWishlistItemsForDataTable();
-    }
-
+    // 리스트에 대한 동작 선택
     handleMenuSelect(event) {
         const selected = event.detail.value;
         switch (selected) {
@@ -282,6 +334,38 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
         console.log('handleMenuSelect');
         console.log(this.myPartsList);
+    }
+
+    // edit list와 create list는 lsta_PartOrderMyPartListListModal를 사용
+    handleMenuModalClose() {
+        this.menuModalAction = null;
+        this.showMenuModal = false;
+    }
+    handleMenuModalSuccess(event) {
+        const data = event.detail;
+        if (!data) {
+            return;
+        }
+        const payload = data.payload;
+
+        if (data.action === MENU_MODAL_ACTION_CREATE) {
+            this.myPartsList = [...this.myPartsList, payload];
+
+            this.wishlistIndexById[payload.Id] = this.myPartsList.length - 1;
+            this.selectListByIndex(this.myPartsList.length - 1);
+
+        } else if (data.action === MENU_MODAL_ACTION_EDIT) {
+            const index = this.wishlistIndexById[payload.Id];
+            if (index !== undefined) {
+                const updatedList = [...this.myPartsList];
+                updatedList[index] = { ...this.myPartsList[index], ...payload };
+                this.myPartsList = updatedList;
+
+                this.selectListByIndex(index);
+            } else {
+                console.warn('리스트에서 해당 Id를 찾지 못했습니다:', payload.Id);
+            }
+        }
     }
 
     async handleClickClearList() {
@@ -343,13 +427,59 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    handleClickAddPart(event) {
-        this.showAddPartModal = true;
-    }
-
     handleRowSelection(event) {
         this.selectedRowIds = event.detail.selectedRows.map(row => row.id);
     }
+
+    // add part
+    handleClickAddPart(event) {
+        this.showAddPartModal = true;
+    }
+    handleAddPartModalClose() {
+        this.showAddPartModal = false;
+    }
+    handleAddPartModalSuccess(event) {
+        const data = event.detail;
+        if (!data) {
+            return;
+        }
+        const { wishlistId, payload } = data;
+
+        const wishlistIndex = this.wishlistIndexById[wishlistId];
+        if (wishlistIndex === -1) {
+            this.showToast(
+                'Add Part',
+                `handleAddPartModalSuccess: error on detail.wishlistId : ${detail.wishlistId}`,
+                'error'
+            );
+            return;
+        };
+        const wishlist = this.myPartsList[wishlistIndex];
+
+        const updateWishlistItems = (payload) => {
+            payload.forEach(item => {
+
+                const items = wishlist.WishlistItems || [];
+                const itemIndex = items.findIndex(wi => wi.Id === item.Id);
+
+                if (itemIndex !== -1) {
+                    items[itemIndex] = {
+                        ...items[itemIndex],
+                        ...item
+                    };
+                } else {
+                    items.push({ ...item });
+                }
+                this.myPartsList[wishlistIndex] = {
+                    ...this.myPartsList[wishlistIndex],
+                    WishlistItems: items,
+                    WishlistProductCount: items.length
+                };
+            });
+        };
+        updateWishlistItems(payload);
+        this.selectListByIndex(wishlistIndex);
+    };
 
     async handleClickDeletePart(event) {
 
@@ -395,10 +525,22 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    handleClickUploadCsv(event) {
+    // csv
+    handleClickDownloadCsvForm() {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        let csvCols = ['Wishlist Name','Part No','Qty','Remark'];
+        csvContent = "\ufeff" + csvCols.join(',') + "\r\n";
+        let encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'Wishlist Upload Form.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    handleClickUploadCsv() {
         this.showUploadSection = !this.showUploadSection;
     }
-
     async handleUploadFinished(event) {
         const uploadedFiles = event.detail.files;
         this.isLoading = true;
@@ -501,21 +643,7 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         }
     }
 
-    handleClickDownloadCsvForm(event) {
-        let csvContent = "data:text/csv;charset=utf-8,";
-        let csvCols = ['Wishlist Name','Part No','Qty','Remark'];
-        csvContent = "\ufeff" + csvCols.join(',') + "\r\n";
-        // let encodedUri = encodeURI(csvContent);
-        let encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-
-        const link = document.createElement('a');
-        link.setAttribute('href', encodedUri);
-        link.setAttribute('download', 'Wishlist Upload Form.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
+    // add to wishlist
     handleClickAddToList() {
         if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
             this.showToast('Error', 'Please select parts to copy.', 'error');
@@ -536,7 +664,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         this.selectedItems = selectedItems;
         this.showAddToListModal = true;
     }
-    
     handleAddToListModalSuccess(event) {
         const data = event.detail;
         if (!data) {
@@ -567,11 +694,11 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
         this.selectListByIndex(this.wishlistIndexById[this.myPartsListItem.Id]);
     }
-
     handleAddToListModalClose() {
         this.showAddToListModal = false;
     }
 
+    // add to cart
     handleClickAddToCart(event) {
         if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
             this.showToast('Error', 'Please select parts to copy.', 'error');
@@ -648,85 +775,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     // handleCompSetModalClose() {
     //     this.showCompSetModal = false;
     // }
-
-    handleMenuModalClose() {
-        this.menuModalAction = null;
-        this.showMenuModal = false;
-    }
-
-    handleMenuModalSuccess(event) {
-        const data = event.detail;
-        if (!data) {
-            return;
-        }
-        const payload = data.payload;
-
-        if (data.action === MENU_MODAL_ACTION_CREATE) {
-            this.myPartsList = [...this.myPartsList, payload];
-
-            this.wishlistIndexById[payload.Id] = this.myPartsList.length - 1;
-            this.selectListByIndex(this.myPartsList.length - 1);
-
-        } else if (data.action === MENU_MODAL_ACTION_EDIT) {
-            const index = this.wishlistIndexById[payload.Id];
-            if (index !== undefined) {
-                const updatedList = [...this.myPartsList];
-                updatedList[index] = { ...this.myPartsList[index], ...payload };
-                this.myPartsList = updatedList;
-
-                this.selectListByIndex(index);
-            } else {
-                console.warn('리스트에서 해당 Id를 찾지 못했습니다:', payload.Id);
-            }
-        }
-    }
-
-    handleAddPartModalClose() {
-        this.showAddPartModal = false;
-    }
-
-    handleAddPartModalSuccess(event) {
-        const data = event.detail;
-        if (!data) {
-            return;
-        }
-        const { wishlistId, payload } = data;
-
-        const wishlistIndex = this.wishlistIndexById[wishlistId];
-        if (wishlistIndex === -1) {
-            this.showToast(
-                'Add Part',
-                `handleAddPartModalSuccess: error on detail.wishlistId : ${detail.wishlistId}`,
-                'error'
-            );
-            return;
-        };
-        const wishlist = this.myPartsList[wishlistIndex];
-
-        const updateWishlistItems = (payload) => {
-            payload.forEach(item => {
-
-                const items = wishlist.WishlistItems || [];
-                const itemIndex = items.findIndex(wi => wi.Id === item.Id);
-
-                if (itemIndex !== -1) {
-                    items[itemIndex] = {
-                        ...items[itemIndex],
-                        ...item
-                    };
-                } else {
-                    items.push({ ...item });
-                }
-                this.myPartsList[wishlistIndex] = {
-                    ...this.myPartsList[wishlistIndex],
-                    WishlistItems: items,
-                    WishlistProductCount: items.length
-                };
-            });
-        };
-        updateWishlistItems(payload);
-        this.selectListByIndex(wishlistIndex);
-    };
 
     handleClickPrint(event) {
         console.log('handleClickPrint(event');

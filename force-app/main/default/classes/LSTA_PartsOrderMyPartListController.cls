@@ -801,9 +801,6 @@ public without sharing class LSTA_PartsOrderMyPartListController {
         return user.Profile.Name == 'LSTA Dealer';
     }
 
-    // evander
-    // 리스트에 뭔가 추가될때?
-    // + 재고를 갱신해야할때?
     @AuraEnabled
     public static PartsOrderResponseWrapper getStockInformation(Map<String, Object> mapData) {
         PartsOrderResponseWrapper clsPartsOrderResponseWrapper = new PartsOrderResponseWrapper();
