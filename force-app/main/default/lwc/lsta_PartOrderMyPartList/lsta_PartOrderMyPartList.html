@@ -195,14 +195,15 @@ toFormatDate 북미포맷
             ></c-lsta_-part-order-my-part-list-add-to-list-modal>
         </template>
         
-        <!-- <c:lsta_CompSetModal
-            partNumber="{!v.checkPartNumber}"
-            quantity="{!v.checkQuantity}"
-            isShowModal="{!v.isShowCompSet}"
-            currentPage="PartOrderMyPartList"
-            onpartadd="{!c.handlePartAddFromModal}"
-            onclose="{!c.handleModalClose}"> -->
         <template if:true={showCompSetModal}>
+            <!-- <c-lsta_-comp-set-modal
+                part-number={checkPartNumber}
+                quantity={checkQuantity}
+                is-show-modal={trueVar}
+                current-page="PartOrderMyPartList"
+                onpartadd={handleAddPartCompSetModal}
+                onclose={handleCompSetModalClose}>
+            </c-lsta_-comp-set-modal> -->
             <c-lsta_-comp-set-modal
                 part-number={checkPartNumber}
                 quantity={checkQuantity}

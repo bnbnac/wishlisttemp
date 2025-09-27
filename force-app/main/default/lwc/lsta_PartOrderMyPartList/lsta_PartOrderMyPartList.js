@@ -2,7 +2,7 @@ import { LightningElement } from 'lwc';
 import { publish, subscribe, MessageContext } from 'lightning/messageService';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartChanged';
+// import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartChanged';
 
 import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
 import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removePartList';
@@ -10,6 +10,8 @@ import removeAllyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListC
 import removeMyPartListItems from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removeMyPartListItems';
 import parseMyPartsItemCSVFile from '@salesforce/apex/LSTA_PartsOrderMyPartListController.parseMyPartsItemCSVFile';
 import getStockInformation from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getStockInformation';
+import addToCart from '@salesforce/apex/LSTA_PartsOrderMyPartListController.addToCart';
+import getPartInAddCart from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getPartInAddCart';
 
 const MENU_MODAL_ACTION_CREATE = 'create';
 const MENU_MODAL_ACTION_EDIT = 'edit';
@@ -714,6 +716,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         this.partsToCart = selectedBuffer.filter((item) => item.isCompSet__c === false);
         this.selectedLeftModalBuffer = selectedBuffer.filter((item) => item.isCompSet__c === true);
 
+console.log('this.partsToCart',this.partsToCart);
+console.log('this.selectedLeftModalBuffer',this.selectedLeftModalBuffer);
         if (this.selectedLeftModalBuffer.length > 0) {
             const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
             this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
@@ -723,62 +727,143 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
         } else {
             this.addToCart();
         }
+console.log('this.partsToCart',this.partsToCart);
+console.log('this.selectedLeftModalBuffer',this.selectedLeftModalBuffer);
     }
 
-    handleAddPartCompSetModal(event) {
-        const partNumbers =
-            Array.isArray(event?.detail?.partNumbers)
-                ? event.detail.partNumbers.filter(Boolean)
-                : [];
+    // compet모달로부터 event수신
+    async handleAddPartCompSetModal(event) {
+        const partNumbers = Array.isArray(event?.detail?.partNumbers)
+            ? event.detail.partNumbers.map((p) => String(p).trim()).filter(Boolean)
+            : [];
 
         if (partNumbers.length === 0) {
             this.showToast('Error', 'No parts selected in modal.', 'error');
-            this.continueCompSetFlow();
             return;
         }
+        const { partNumber, quantity } = event.detail.partNumbers[0] || {};
+        const mapData = {
+            data: [
+                {
+                    partNumber: String(partNumber).trim(),
+                    quantity: Number(quantity) > 0 ? Number(quantity) : 1
+                }
+            ]
+        };
 
-        // 모달에서 선택된 파트들을 장바구니 후보에 합치기
-        const partsFromModal = partNumbers.map((partNumber) => ({
-            PartNumber: partNumber,
-            Quantity__c: this.checkQuantity,
-            isCompSet__c: false
-        }));
-        this.partsToCart = [...this.partsToCart, ...partsFromModal];
+        console.log(mapData);
 
-        // 다음 컴셋 아이템 진행 or 장바구니 반영
-        this.continueCompSetFlow();
+        // 이게 좀 아닌듯?
+        const response = await getPartInAddCart({ mapData });
+        console.log('## getPartInAddCart : ', response);
+        if (response?.result !== 'OK') {
+            this.showToast('Fail to add to cart', 'Fail to process your request', 'error');
+            return;
+        }
+        const payload = response?.payload ?? {};
+        const partsMap = payload?.parts ?? {};
+        const values = Object.keys(partsMap).map((key) => partsMap[key]);
+
+        const currentPartsToCart = Array.isArray(this.partsToCart) ? this.partsToCart : [];
+        this.partsToCart = [...currentPartsToCart, ...values];
+        console.log('## handleAddPartCompSetModal : ', this.partsToCart);
+
+        this.isShowCompSet = false;
+
+        const selectedLeftModalBuffer = Array.isArray(this.selectedLeftModalBuffer)
+            ? [...this.selectedLeftModalBuffer]
+            : [];
+console.log('selectedLeftModalBuffer', selectedLeftModalBuffer); // 0 length
+
+        if (selectedLeftModalBuffer.length > 0) {
+            // const removedElement = selectedLeftModalBuffer.shift();
+            // this.checkPartNumber = removedElement?.PartNumber;
+            // this.checkQuantity = removedElement?.Quantity__c;
+            // this.selectedLeftModalBuffer = selectedLeftModalBuffer;
+            // this.isShowCompSet = true;
+            const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
+            this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
+            this.checkQuantity = removedElement.Quantity__c;
+            this.selectedLeftModalBuffer = remaining;
+            this.showCompSetModal = true;
+        } else {
+            console.log('## add cart gogo in handleAddPartCompSetModal ##');
+            await this.addToCart();
+        }
     }
 
     handleCompSetModalClose() {
-        // 선택 없이 닫은 경우: 그냥 다음으로 진행
-        this.continueCompSetFlow();
+        // 다른 리스트같은 것들 다 초기상태로 돌리기
+        // 이런 액션을 제어하는 뭔가를 만들어서 해당 method(add cart)에서 ㅆ면 좋다
+        this.showCompSetModal = false;
     }
 
-    continueCompSetFlow() {
+    async continueCompSetFlow() {
         if (this.selectedLeftModalBuffer.length > 0) {
             const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
             this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
             this.checkQuantity = removedElement.Quantity__c;
             this.selectedLeftModalBuffer = remaining;
-            this.showCompSetModal = true;      // 다음 컴셋 모달 이어서 표시
+            this.showCompSetModal = true;
         } else {
-            this.showCompSetModal = false;     // 더 이상 모달 없음
-            this.addToCart();                  // partsToCart 기반으로 실제 장바구니 반영
+            await this.addToCart();
         }
     }
 
-    addToCart() {
-        // TODO: this.partsToCart 를 기준으로 장바구니 반영
-        console.log('addToCart()', this.partsToCart);
-    }
+    async addToCart() {
+        const partsToCart = Array.isArray(this.partsToCart) ? this.partsToCart : [];
+        console.log('## addToCart : ', partsToCart);
+        if (partsToCart.length === 0) {
+            this.showToast('Add to Cart', 'No Parts to copy to the cart.', 'error');
+            return;
+        }
 
-    // handleCompSetModalClose() {
-    //     this.showCompSetModal = false;
-    // }
+        const items = [];
+        for (const item of partsToCart) {
+            // 호환 세트 모달 이벤트로 넘어온 값: item.Partnum__c 존재
+            if (item?.Partnum__c) {
+                items.push({
+                    partNumber: item.Partnum__c,
+                    quantity: item?.Quantity__c ? item.Quantity__c : 1
+                });
+            } else {
+                // 일반 wishlist item
+                const partNumber = item?.Product2?.Part__r?.Partnum__c;
+                items.push({
+                    partNumber: partNumber,
+                    quantity: item?.Quantity__c ? item.Quantity__c : 1
+                });
+            }
+        }
+
+        const mapData = { item: items, orderType: this.selectedOrderType };
+        console.log('mapData : ', mapData);
+
+        this.isLoading = true;
+
+        try {
+            const response = await addToCart({ mapData });
+            console.log('## addToCart : ', response);
+            if (response?.result !== 'OK') {
+                this.showToast('Fail to add to cart', 'Fail to process your request', 'error');
+                return;
+            }
+            
+            const payload = response?.payload ?? {};
+            console.log('addtocart',payload);
+        } catch (error) {
+            console.error(error);
+            this.showToast('Fail to add to cart', 'An error occured when processing your request', 'error');
+        } finally {
+            this.isLoading = false;
+            this.isShowCompSet = false;
+
+            // 커머스이벤트 안보냄
+        }
+    }
 
     handleClickPrint(event) {
         console.log('handleClickPrint(event');
-        // 인쇄 전용 레이아웃 팝업 또는 window.print()
     }
     
     showToast(title, message, variant) {
