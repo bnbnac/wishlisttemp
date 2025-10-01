@@ -1,4 +1,22 @@
-
+/****************************************************************************************
+ * @filename        : PartOrderMyPartListController.js
+ * @projectname     :
+ * @author          : xanitus@windmillsoft.kr / 최명호(K)
+ * @date            : 2023.10.05
+ * @group           :
+ * @group-content   :
+ * @description     : 
+ * @tester          :
+ * @reference       :
+ * @copyright       : 
+ * @modification Log
+ * ======================================================================================
+ *  ver     date        author      description
+ * ======================================================================================
+    0.1     2023.10.05  K(xanitus)  create       
+    0.2     2023.11.15  K(xanitus)  목록추가를 찜 목록 및 장바구니 추가로 분리
+    0.3     2023.11.22  K(xanitus)  단가 추가
+ ****************************************************************************************/
     ({
         doInit : function(component, event, helper) {
             component.set("v.isDone",false);

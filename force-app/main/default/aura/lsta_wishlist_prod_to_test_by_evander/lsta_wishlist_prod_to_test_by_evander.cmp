@@ -1,4 +1,28 @@
-
+<!--
+/***********************************************************************************************************
+ * @filename        : PartOrderMyPartList.cmp
+ * @projectname     :
+ * @author          : xanitus@windmillsoft.kr / 최명호(K)
+ * @date            : 2023.10.05
+ * @group           :
+ * @group-content   : 
+ * @description     : 
+ * @Referrence      : 
+ * @tester          :
+ * @reference       :
+ * @copyright       : 
+ * @modification    : 
+ * ==========================================================================================================
+ *  ver     date        author      description
+ * ==========================================================================================================
+    0.1     2023.10.05  K(xanitus)  create            
+    0.2     2023.10.24  K(xanitus)  이동 버튼 삭제 / 복제 -> 목록 추가 레이블 변경
+    0.3     2023.11.15  K(xanitus)  리스트가 MyPartList 에서 표준개체인 WishList 로 변경됨에 따라 수정됨
+                        K(xanitus)  목록 추가를 찜 목록 추가 및 장바구니 추가로 분리한다.
+                        K(xanitus)  선택 항목만 출력되도록 수정
+    0.4     2023.11.22  K(xanitus)  단가 추가
+ ************************************************************************************************************/
+-->
 <aura:component          
         description = "Parts Order Cart" 
         implements = "force:appHostable,flexipage:availableForAllPageTypes,forceCommunity:availableForAllPageTypes"

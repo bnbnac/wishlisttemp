@@ -1,4 +1,3 @@
-
 .c-container {
     border: 1px solid var(--custom-color-gray3);
     min-height: 26.6875rem;
@@ -11,7 +10,11 @@
 .slds-grid_vertical-align-center {
     gap: .75rem;
 }
-
+.slds-modal__header {
+    display: flex;
+    justify-content: space-between;
+    border:0;
+}
 .header .title-right .slds-form-element__label{
     max-width: inherit;
     font-size: 0.75rem;
@@ -42,7 +45,13 @@ lightning-button-icon {
     --slds-c-button-color-background: #fff;
     --slds-c-icon-color-foreground: var(--custom-color-secondary1);
 }
-
+.slds-modal .slds-modal__header {
+    text-align: left;
+    gap: 1rem;
+}
+.slds-modal .slds-modal__header .slds-modal__title {
+    font-size: 1.125rem;
+}
 .upload-csv {
     align-items: center;
     display: flex;
@@ -85,7 +94,18 @@ lightning-button-icon {
 .inactive {
     background-color: darkslategray;
 }
-
+.search-form-group {
+    gap:.5rem;
+    
+}
+.search-form-group .form-group {
+    flex: 1;
+}
+.modal-content {
+    background: #fff;
+    border-radius: 0 0 1.25rem 1.25rem;
+    border-top: 1px solid #e1e1e1;
+}
 @media (min-width: 48em) {
     .slds-modal__container {
         max-width: 80vh;
@@ -101,5 +121,30 @@ lightning-button-icon {
 
     .button-wrap lightning-button {
         flex: 1;
+    }
+
+    
+}
+
+@media (max-width: 48em) {
+    .search-form-group {
+        flex-wrap: wrap;
+    }
+    .search-form-group .form-group {
+        flex: inherit;
+        width: 100%;
+    }
+    .table__container {
+        overflow-x: scroll;
+    }
+    .slds-modal__header .slds-grid_vertical-align-center{
+        align-items: start;
+    }
+    .slds-modal__title {
+        font-size: 1rem;
+    }
+    .slds-modal__title + p {
+        font-size: 0.75rem;
+        line-height: 1.2;
     }
 }

@@ -90,14 +90,25 @@ public without sharing class LSTA_PartsOrderMyPartListController {
 //          TODO : 여기서는 대리점 가격만을 조회한다. 후에 설정에 따라 조회되도록 해야 한다.   
             String priceBookName = 'FC Part Price Book';
             if(isDistributor) priceBookName = 'FF Part Price Book';
+            // List<PricebookEntry> listPricebookEntry = [
+            //     SELECT  id,UnitPrice,UnitPrice_FA__c, UnitPrice_FB__c, UnitPrice_FC__c, UnitPrice_FD__c, UnitPrice_FF__c, UnitPrice_LSTA__c,Product2Id
+            //       FROM  PricebookEntry 
+            //      WHERE  Pricebook2.Name = :priceBookName
+            //        AND  Product2Id IN :listProductId
+            //        AND  IsActive = true
+            //        AND  CurrencyIsoCode = :UserInfo.getDefaultCurrency()
+            // ];
+
             List<PricebookEntry> listPricebookEntry = [
-                SELECT  id,UnitPrice,UnitPrice_FA__c, UnitPrice_FB__c, UnitPrice_FC__c, UnitPrice_FD__c, UnitPrice_FF__c, UnitPrice_LSTA__c,Product2Id
-                  FROM  PricebookEntry 
-                 WHERE  Pricebook2.Name = :priceBookName
-                   AND  Product2Id IN :listProductId
-                   AND  IsActive = true
-                   AND  CurrencyIsoCode = 'KRW'
+                SELECT id,UnitPrice,UnitPrice_FA__c, UnitPrice_FB__c, UnitPrice_FC__c, UnitPrice_FD__c, UnitPrice_FF__c, UnitPrice_LSTA__c,Product2Id
+                FROM PricebookEntry 
+                WHERE Pricebook2.IsActive = true 
+                AND Pricebook2.KIND__c = 'FC' 
+                AND Product2Id IN :listProductId
+                AND IsActive = true
+                AND CurrencyIsoCode = :UserInfo.getDefaultCurrency()
             ];
+
             Map<String,PricebookEntry> mapPricebookEntry = new Map<String,PricebookEntry>();
             for(PricebookEntry clsPricebookEntry : listPricebookEntry) {
                 mapPricebookEntry.put(clsPricebookEntry.Product2Id,clsPricebookEntry);

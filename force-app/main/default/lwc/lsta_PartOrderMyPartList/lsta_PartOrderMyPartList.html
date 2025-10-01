@@ -28,12 +28,12 @@ toFormatDate 북미포맷
                 <div>
                     <div class="slds-grid slds-grid_vertical-align-center">
                         <lightning-icon icon-name="standard:budget" size="medium"></lightning-icon>
-                        <div>
-                            <div class="slds-grid slds-form-element__label">Wishlist</div>
-                            <div class="slds-grid title-right" onclick={handleDivClick}>
-                                <h3>{myPartsListItem.Name}</h3>
+                        <div class="page-title__wrap">
+                            <div class="page-title">Wishlist</div>
+                            <div class="slds-grid title-right">
                                 <lightning-button-menu 
                                     alternative-text="Wishlist List" 
+                                    label={myPartsListItem.Name}
                                     variant="bare" 
                                     class="wishlist-list" 
                                     onselect={handleListSelect}
@@ -53,7 +53,6 @@ toFormatDate 북미포맷
                             icon-name="standard:settings"
                             alternative-text="Menu"
                             onselect={handleMenuSelect}
-                            icon-size="medium"
                             class="settings-menu-only"
                         >
                             <lightning-menu-item value="create" label="Create List" icon-name="utility:add"></lightning-menu-item>
@@ -63,10 +62,15 @@ toFormatDate 북미포맷
                         </lightning-button-menu>
                     </div>
                     <p class="slds-page-header__name-meta" style="margin-top:10px">
+                        <template for:each={descriptionList} for:item="desc">
+                            <div key={desc}>{desc}</div>
+                        </template>
+                    </p>
+                    <p class="slds-page-header__name-meta" style="margin-top:10px">
                         <span class="slds-badge slds-badge_lightest" style="padding-left:10px;padding-right:10px">
-                            6
+                            {selectedRowIdsLength}
                         </span>
-                        &nbsp; parts are registered.
+                        &nbsp; {infoStatementByLength} selected.
                     </p>
                 </div>
                 
@@ -155,7 +159,6 @@ toFormatDate 북미포맷
                 key-field="id"
                 data={wishlistItemsDataTableRows}
                 columns={columns}
-                max-row-selection="100"
                 selected-rows={selectedRowIds}
                 onrowselection={handleRowSelection}>
             </lightning-datatable>
@@ -195,15 +198,43 @@ toFormatDate 북미포맷
             ></c-lsta_-part-order-my-part-list-add-to-list-modal>
         </template>
         
+        <template if:true={showPreCheckModal}>
+            <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <h2 class="slds-text-heading_medium">Add to Cart</h2>
+                    </header>
+
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <lightning-input
+                            type="checkbox"
+                            label="Do CompSet Check"
+                            checked={preCheckCheckboxChecked}
+                            onchange={handlePreCheckChange}>
+                        </lightning-input>
+                        <p class="slds-m-top_small">
+                            or all selected parts are added to your cart.
+                        </p>
+                    </div>
+
+                    <footer class="slds-modal__footer slds-grid slds-grid_align-end">
+                        <lightning-button
+                            variant="neutral"
+                            label="Cancel"
+                            onclick={handlePreCheckCancel}>
+                        </lightning-button>
+                        <lightning-button
+                            class="slds-m-left_small"
+                            variant="brand"
+                            label="Confirm"
+                            onclick={handlePreCheckConfirm}>
+                        </lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
         <template if:true={showCompSetModal}>
-            <!-- <c-lsta_-comp-set-modal
-                part-number={checkPartNumber}
-                quantity={checkQuantity}
-                is-show-modal={trueVar}
-                current-page="PartOrderMyPartList"
-                onpartadd={handleAddPartCompSetModal}
-                onclose={handleCompSetModalClose}>
-            </c-lsta_-comp-set-modal> -->
             <c-lsta_-comp-set-modal
                 part-number={checkPartNumber}
                 quantity={checkQuantity}

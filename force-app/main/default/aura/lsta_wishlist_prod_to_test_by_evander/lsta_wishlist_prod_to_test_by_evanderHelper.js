@@ -1,4 +1,25 @@
-
+/************************************************************************************************************
+ * @filename        : PartOrderMyPartListHelper.js
+ * @projectname     :
+ * @author          : xanitus@windmillsoft.kr / 최명호(K)
+ * @date            : 2023.10.05
+ * @group           :
+ * @group-content   :
+ * @description     : 
+ * @tester          :
+ * @reference       :
+ * @copyright       : 
+ * @modification Log
+ * ==========================================================================================================
+ *  ver     date        author      description
+ * ==========================================================================================================
+    0.1     2023.10.05  K(xanitus)  create 
+    0.2     2023.11.10  K(xanitus)  myPartsListColumns > 필드 Quantity__c 를 수정 할 수 있도록 한다
+                                    업로드 양식 변경
+    0.3     2023.11.15  K(xanitus)  리스트가 MyPartList 에서 표준개체인 WishList 로 변경됨에 따라 수정됨
+                        K(xanitus)  목록 추가를 찜 목록 추가 및 장바구니 추가로 분리한다.    
+    0.4     2023.11.22  K(xanitus)  단가 추가                                                        
+ ************************************************************************************************************/
 ({
     setDataTables : function(component) {
         var isDistributor = component.get('v.isDistributor');

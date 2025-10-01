@@ -2,7 +2,7 @@ import { LightningElement } from 'lwc';
 import { publish, subscribe, MessageContext } from 'lightning/messageService';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-// import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartChanged';
+import CART_CHANGED from '@salesforce/messageChannel/lightning__commerce_cartChanged';
 
 import getMyPartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.getMyPartList';
 import removePartList from '@salesforce/apex/LSTA_PartsOrderMyPartListController.removePartList';
@@ -56,6 +56,8 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     showAddToListModal;
     showUploadSection;
     showCompSetModal;
+    showPreCheckModal;
+    preCheckCheckboxChecked = true;
 
     isLoading;
     isStockLoading;
@@ -119,6 +121,24 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
 
     get trueVar() {
         return true;
+    }
+
+    get wishlistLength() {
+        return this.myPartsListItem?.WishlistItems?.length;
+    }
+
+    get selectedRowIdsLength() {
+        return this.selectedRowIds?.length;
+    }
+    
+    get infoStatementByLength() {
+        return this.selectedRowIdsLength === 1 ? 'part is' : 'parts are';
+    }
+
+    get descriptionList() {
+        const text = this.myPartsListItem?.Description__c || '';
+        // \r\n (윈도우), \n (맥/리눅스) 모두 처리
+        return text.split(/\r?\n/).filter(Boolean);
     }
 
     async connectedCallback() {
@@ -334,8 +354,6 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
                 break;
             default:
         }
-        console.log('handleMenuSelect');
-        console.log(this.myPartsList);
     }
 
     // edit list와 create list는 lsta_PartOrderMyPartListListModal를 사용
@@ -701,23 +719,49 @@ export default class Lsta_PartOrderMyPartList extends LightningElement {
     }
 
     // add to cart
-    handleClickAddToCart(event) {
+    handleClickAddToCart() {
         if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
             this.showToast('Error', 'Please select parts to copy.', 'error');
             return;
         }
+        this.preCheckCheckboxChecked = true;
+        this.showPreCheckModal = true;
+    }
 
+    handlePreCheckConfirm() {
+        this.showPreCheckModal = false;
+        this.setAndShowCompSetModal(this.preCheckCheckboxChecked);
+    }
+    handlePreCheckChange(event) {
+        this.preCheckCheckboxChecked = event.target.checked;
+    }
+    handlePreCheckCancel() {
+        this.showPreCheckModal = false;
+    }
+    setAndShowCompSetModal(needCompSetCheck) {
+
+        if (!this.selectedRowIds || this.selectedRowIds.length === 0) {
+            this.showToast('Error', 'Please select parts to copy.', 'error');
+            return;
+        }
+        
         const items = this.myPartsListItem?.WishlistItems || [];
         const selectedItems = items.filter(item =>
             this.selectedRowIds.includes(item.Id)
         );
         this.selectedItems = selectedItems;
-        const selectedBuffer = Array.isArray(this.selectedItems) ? this.selectedItems : [];
-        this.partsToCart = selectedBuffer.filter((item) => item.isCompSet__c === false);
-        this.selectedLeftModalBuffer = selectedBuffer.filter((item) => item.isCompSet__c === true);
+        this.selectedLeftModalBuffer = [];
 
-console.log('this.partsToCart',this.partsToCart);
-console.log('this.selectedLeftModalBuffer',this.selectedLeftModalBuffer);
+        if (needCompSetCheck) {
+            const selectedBuffer = Array.isArray(this.selectedItems) ? this.selectedItems : [];
+            this.partsToCart = selectedBuffer.filter((item) => item.isCompSet__c === false);
+            this.selectedLeftModalBuffer = selectedBuffer.filter((item) => item.isCompSet__c === true);
+        } else {
+            const selectedBuffer = Array.isArray(this.selectedItems) ? this.selectedItems : [];
+            console.log('noneed', selectedBuffer);
+            this.partsToCart = selectedBuffer;
+        }
+
         if (this.selectedLeftModalBuffer.length > 0) {
             const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
             this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
@@ -727,35 +771,40 @@ console.log('this.selectedLeftModalBuffer',this.selectedLeftModalBuffer);
         } else {
             this.addToCart();
         }
-console.log('this.partsToCart',this.partsToCart);
-console.log('this.selectedLeftModalBuffer',this.selectedLeftModalBuffer);
     }
 
-    // compet모달로부터 event수신
     async handleAddPartCompSetModal(event) {
-        const partNumbers = Array.isArray(event?.detail?.partNumbers)
-            ? event.detail.partNumbers.map((p) => String(p).trim()).filter(Boolean)
+        const partNumberItems = Array.isArray(event?.detail?.partNumbers)
+            ? event.detail.partNumbers
             : [];
 
-        if (partNumbers.length === 0) {
+        if (partNumberItems.length === 0) {
             this.showToast('Error', 'No parts selected in modal.', 'error');
+            this.continueCompSetFlow();
             return;
         }
-        const { partNumber, quantity } = event.detail.partNumbers[0] || {};
-        const mapData = {
-            data: [
-                {
-                    partNumber: String(partNumber).trim(),
-                    quantity: Number(quantity) > 0 ? Number(quantity) : 1
-                }
-            ]
-        };
 
-        console.log(mapData);
+        const normalizedData = partNumberItems
+            .map((item) => {
+                const partNumber = String(item?.partNumber ?? '').trim();
+                const quantityNumber = Number(item?.quantity);
+                const quantity = Number.isFinite(quantityNumber) && quantityNumber > 0 ? quantityNumber : 1;
 
-        // 이게 좀 아닌듯?
+                return {
+                    partNumber: partNumber,
+                    quantity: quantity
+                };
+            })
+            .filter((item) => item.partNumber.length > 0);
+
+        if (normalizedData.length === 0) {
+            this.showToast('Error', 'Invalid part numbers.', 'error');
+            this.continueCompSetFlow();
+            return;
+        }
+
+        const mapData = { data: normalizedData };
         const response = await getPartInAddCart({ mapData });
-        console.log('## getPartInAddCart : ', response);
         if (response?.result !== 'OK') {
             this.showToast('Fail to add to cart', 'Fail to process your request', 'error');
             return;
@@ -766,39 +815,27 @@ console.log('this.selectedLeftModalBuffer',this.selectedLeftModalBuffer);
 
         const currentPartsToCart = Array.isArray(this.partsToCart) ? this.partsToCart : [];
         this.partsToCart = [...currentPartsToCart, ...values];
-        console.log('## handleAddPartCompSetModal : ', this.partsToCart);
-
         this.isShowCompSet = false;
 
         const selectedLeftModalBuffer = Array.isArray(this.selectedLeftModalBuffer)
             ? [...this.selectedLeftModalBuffer]
             : [];
-console.log('selectedLeftModalBuffer', selectedLeftModalBuffer); // 0 length
-
         if (selectedLeftModalBuffer.length > 0) {
-            // const removedElement = selectedLeftModalBuffer.shift();
-            // this.checkPartNumber = removedElement?.PartNumber;
-            // this.checkQuantity = removedElement?.Quantity__c;
-            // this.selectedLeftModalBuffer = selectedLeftModalBuffer;
-            // this.isShowCompSet = true;
             const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
             this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
             this.checkQuantity = removedElement.Quantity__c;
             this.selectedLeftModalBuffer = remaining;
             this.showCompSetModal = true;
         } else {
-            console.log('## add cart gogo in handleAddPartCompSetModal ##');
             await this.addToCart();
         }
     }
 
     handleCompSetModalClose() {
-        // 다른 리스트같은 것들 다 초기상태로 돌리기
-        // 이런 액션을 제어하는 뭔가를 만들어서 해당 method(add cart)에서 ㅆ면 좋다
         this.showCompSetModal = false;
     }
 
-    async continueCompSetFlow() {
+    continueCompSetFlow() {
         if (this.selectedLeftModalBuffer.length > 0) {
             const [removedElement, ...remaining] = this.selectedLeftModalBuffer;
             this.checkPartNumber = removedElement.Product2?.Part__r?.Partnum__c;
@@ -806,13 +843,12 @@ console.log('selectedLeftModalBuffer', selectedLeftModalBuffer); // 0 length
             this.selectedLeftModalBuffer = remaining;
             this.showCompSetModal = true;
         } else {
-            await this.addToCart();
+            this.addToCart();
         }
     }
 
     async addToCart() {
         const partsToCart = Array.isArray(this.partsToCart) ? this.partsToCart : [];
-        console.log('## addToCart : ', partsToCart);
         if (partsToCart.length === 0) {
             this.showToast('Add to Cart', 'No Parts to copy to the cart.', 'error');
             return;
@@ -837,33 +873,30 @@ console.log('selectedLeftModalBuffer', selectedLeftModalBuffer); // 0 length
         }
 
         const mapData = { item: items, orderType: this.selectedOrderType };
-        console.log('mapData : ', mapData);
 
         this.isLoading = true;
 
         try {
             const response = await addToCart({ mapData });
-            console.log('## addToCart : ', response);
             if (response?.result !== 'OK') {
                 this.showToast('Fail to add to cart', 'Fail to process your request', 'error');
                 return;
             }
+            this.showToast('Add to cart', 'Selected parts are added to your cart.', 'success');
+            this.selectedRowIds = [];
             
-            const payload = response?.payload ?? {};
-            console.log('addtocart',payload);
         } catch (error) {
             console.error(error);
             this.showToast('Fail to add to cart', 'An error occured when processing your request', 'error');
         } finally {
             this.isLoading = false;
-            this.isShowCompSet = false;
-
-            // 커머스이벤트 안보냄
+            this.showCompSetModal = false;
         }
     }
 
     handleClickPrint(event) {
         console.log('handleClickPrint(event');
+        // 인쇄 전용 레이아웃 팝업 또는 window.print()
     }
     
     showToast(title, message, variant) {

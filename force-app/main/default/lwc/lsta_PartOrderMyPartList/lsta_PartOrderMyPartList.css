@@ -2,6 +2,14 @@
     border: 1px solid var(--custom-color-gray3);
     min-height: 26.6875rem;
 }
+.page-title__wrap {
+    display: flex;
+    flex-direction: column;
+}
+.page-title {
+    font-size: 0.75rem;
+    line-height: 1;
+}
 .title {
     justify-content: space-between;
     padding:0.75rem;
@@ -21,7 +29,15 @@
 }
 
 .wishlist-list {
-    padding: 0 .1406rem .2813rem;
+    font-size: 1.125rem;
+    line-height: 1;
+    --lwc-brandAccessible:#111;
+    --lwc-lineHeightButton:1.4;
+}
+
+.wishlist-list .slds-button__label {
+    font-size: 1.75rem;   /* 원하는 크기 */
+    font-weight: 600;     /* bold */
 }
 
 .button-wrap {
@@ -76,7 +92,25 @@ lightning-button-icon {
     font-weight: 600;
     color: #AFAFAF;
 }
+.header .settings-menu-only {
+    --lwc-borderRadiusMedium:1rem;
+    --slds-c-icon-color-foreground:#0250D9;
+    --lwc-colorTextIconDefault:#0250D9;
+    --lwc-buttonBorderRadius:2rem;
+    --lwc-spacingXSmall:0.25rem;
+    --lwc-spacingXxSmall:0;
+    --lwc-squareIconMediumContentAlt:1.75rem;
+    --lwc-squareIconXSmallContent:.75rem;
+}
 
+.settings-menu-only lightning-menu-item {
+    --slds-c-icon-color-foreground:#005ABB;
+    --lwc-spacingXSmall:0.5rem;
+    --lwc-spacingSmall:0.875rem;
+}
+.header .button-wrap lightning-button{
+    height: fit-content;
+}
 @media (max-width: 64em) {
     .title {
         flex-direction: column;

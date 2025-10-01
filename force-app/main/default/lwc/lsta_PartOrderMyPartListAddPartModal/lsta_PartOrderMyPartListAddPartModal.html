@@ -9,16 +9,29 @@
                 </template>
 
                 <div class="slds-modal__header">
-                    <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">Add Part</h1>
-                    <h1 id="modal-heading-02">Search, select, and add parts to your wishlist.</h1>
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <lightning-icon icon-name="standard:contract_line_item" size="medium"></lightning-icon>
+                        <div>
+                            <h1 id="modal-heading-01" class="slds-modal__title slds-hyphenate">Add Part</h1>
+                            <p id="modal-heading-02">Search, select, and add parts to your wishlist.</p>
+                        </div>
+                    </div>
+                    <!-- Search Button -->
+                    <div class="">
+                        <lightning-button
+                            variant="neutral"
+                            label="Search"
+                            onclick={handleSearchPartsToAdd}>
+                        </lightning-button>
+                    </div>
                 </div>
 
                 <!-- 검색 -->
-                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-2">
-                    <div class="slds-grid slds-gutters">
+                <div class="slds-modal__content slds-p-left_medium slds-p-right_medium slds-p-bottom_medium" id="modal-content-id-2">
+                    <div class="slds-grid search-form-group">
                         
                         <!-- Part Number -->
-                        <div class="slds-col">
+                        <div class="form-group">
                             <div class="slds-form-element">
                                 <div class="slds-form-element__control">
                                     <lightning-input
@@ -34,7 +47,7 @@
                         </div>
 
                         <!-- Old Part Number -->
-                        <div class="slds-col">
+                        <div class="form-group">
                             <div class="slds-form-element">
                                 <div class="slds-form-element__control">
                                     <lightning-input
@@ -49,7 +62,7 @@
                         </div>
 
                         <!-- Part Name -->
-                        <div class="slds-col">
+                        <div class="form-group">
                             <div class="slds-form-element">
                                 <div class="slds-form-element__control">
                                     <lightning-input
@@ -63,23 +76,15 @@
                             </div>
                         </div>
 
-                        <!-- Search Button -->
-                        <div class="slds-col slds-align-bottom">
-                            <lightning-button
-                                class="button-spacing"
-                                variant="neutral"
-                                label="Search"
-                                onclick={handleSearchPartsToAdd}>
-                            </lightning-button>
-                        </div>
+                        
                     </div>
                 </div>
 
-                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-3">
+                <div class="modal-content slds-p-around_medium" id="modal-content-id-3">
 
                     <!-- 검색결과 테이블 -->
                     <template if:false={isSearchedListTableRowsEmpty}>
-                        <div class="slds-m-top_medium">
+                        <div class="table__container">
                             <table class="slds-table slds-table_cell-buffer slds-table_bordered" id="table-search-parts" data-id="tableSearchParts">
                                 <thead>
                                     <tr>
@@ -134,7 +139,7 @@
                         </div>
                     </template>
 
-                    <div style="border-width: 2px 0px 0px 0px;border-style: solid;padding-top: 20px;"></div>
+                    <div style="border:1px solid #e1e1e1;"></div>
                     
                     <!-- 선택결과 및 수량 테이블 -->
                     <template if:false={isAddedListTableRowsEmpty}>
